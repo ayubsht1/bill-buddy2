@@ -32,10 +32,10 @@ export default function LandingPage() {
 
           <div className="flex gap-2">
             <Link href="/auth/login">
-              <Button variant="outline">Login</Button>
+              <Button variant="outline" className="cursor-pointer hover:text-primary">Login</Button>
             </Link>
             <Link href="/auth/signup">
-              <Button>Sign Up</Button>
+              <Button className="cursor-pointer hover:text-white">Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -44,7 +44,7 @@ export default function LandingPage() {
       {/* Hero Section with background image */}
       <section
         className="relative flex-1 flex items-center justify-center text-center px-6 md:px-12 py-32 bg-cover bg-center"
-        style={{ backgroundImage: "url('/hero-bg.jpg')" }} // Replace with your image
+        style={{ backgroundImage: "url('/hero2.jpg')" }} // Replace with your image
       >
         {/* Dark overlay for readability */}
         <div className="absolute inset-0 bg-black/50"></div>
@@ -60,7 +60,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
-              <Button size="lg" className="px-8 py-3">
+              <Button size="lg" className="px-8 py-3 cursor-pointer hover:text-white">
                 Get Started
               </Button>
             </Link>
@@ -68,7 +68,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 border-white"
+                className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 hover:text-primary border-white cursor-pointer"
               >
                 Login
               </Button>
@@ -193,7 +193,7 @@ export default function LandingPage() {
                 className="w-full rounded-lg border px-4 py-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full hover:text-white cursor-pointer">
                 Send Message
               </Button>
             </form>

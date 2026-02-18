@@ -5,42 +5,59 @@ import { useRouter } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { SignupForm } from "@/components/auth/SignupForm";
 import api from "@/lib/api/api";
+import { CircleArrowLeft } from "lucide-react";
+
 
 export default function SignupPage() {
   const router = useRouter();
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [gender, setGender] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await api.post("/register/", {
+      await api.post("/register/", {
         firstName,
         lastName,
         username,
         email,
-        gender,
+        password,
       });
 
-      setLoading(false);
       toast.success("Account created successfully!");
       router.push("/login");
     } catch (err: any) {
-      setLoading(false);
       const message =
         err.response?.data?.message || err.message || "Something went wrong";
       toast.error(message);
       console.log("Signup error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
+    <>
+    <a
+        href="/"
+        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 transition"
+      >
+        <CircleArrowLeft className="text-primary h-8 w-8" />
+      </a>
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
         <SignupForm
@@ -52,13 +69,16 @@ export default function SignupPage() {
           setUsername={setUsername}
           email={email}
           setEmail={setEmail}
-          gender={gender}
-          setGender={setGender}
+          password={password}
+          setPassword={setPassword}
+          confirmPassword={confirmPassword}
+          setConfirmPassword={setConfirmPassword}
           loading={loading}
           onSubmit={handleSubmit}
-        />
+          />
       </div>
       <Toaster position="top-center" />
     </div>
+    </>
   );
 }
