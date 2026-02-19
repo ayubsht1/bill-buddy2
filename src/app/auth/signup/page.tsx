@@ -39,7 +39,7 @@ export default function SignupPage() {
       });
 
       toast.success("Account created successfully!");
-      router.push("/login");
+      router.push("/auth/login");
     } catch (err: any) {
       const message =
         err.response?.data?.message || err.message || "Something went wrong";

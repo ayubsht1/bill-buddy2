@@ -4,8 +4,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FEATURES, STEPS } from "@/lib/landing";
 import { Card } from "@/components/ui/card";
+import { signOut, useSession } from "next-auth/react";
 
 export default function LandingPage() {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/" });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Navbar */}
@@ -16,6 +23,11 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden md:flex gap-6">
+            {isAuthenticated ? (
+              <Link href="/dashboard" className="hover:text-primary transition">
+                Dashboard
+              </Link>
+            ) : null}
             <Link href="#features" className="hover:text-primary transition">
               Features
             </Link>
@@ -31,12 +43,31 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex gap-2">
-            <Link href="/auth/login">
-              <Button variant="outline" className="cursor-pointer hover:text-primary">Login</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button className="cursor-pointer hover:text-white">Sign Up</Button>
-            </Link>
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="cursor-pointer hover:text-destructive"
+              >
+                Logout
+              </Button>
+            ) : (
+              <>
+                <Link href="/auth/login">
+                  <Button
+                    variant="outline"
+                    className="cursor-pointer hover:text-primary"
+                  >
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button className="cursor-pointer hover:text-white">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -59,20 +90,36 @@ export default function LandingPage() {
             roommates, friends, and families who share costs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
-              <Button size="lg" className="px-8 py-3 cursor-pointer hover:text-white">
-                Get Started
-              </Button>
-            </Link>
-            <Link href="/auth/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 hover:text-primary border-white cursor-pointer"
-              >
-                Login
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button
+                  size="lg"
+                  className="px-8 py-3 cursor-pointer hover:text-white"
+                >
+                  Get Started
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/signup">
+                  <Button
+                    size="lg"
+                    className="px-8 py-3 cursor-pointer hover:text-white"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+                <Link href="/auth/login">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 hover:text-primary border-white cursor-pointer"
+                  >
+                    Login
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -193,7 +240,10 @@ export default function LandingPage() {
                 className="w-full rounded-lg border px-4 py-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
 
-              <Button type="submit" className="w-full hover:text-white cursor-pointer">
+              <Button
+                type="submit"
+                className="w-full hover:text-white cursor-pointer"
+              >
                 Send Message
               </Button>
             </form>
