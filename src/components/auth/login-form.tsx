@@ -84,13 +84,13 @@ export function LoginForm({
             </div>
 
             <div className="flex flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
                 {loading ? "Logging in..." : "Login"}
               </Button>
 
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full cursor-pointer"
                 type="button"
                 onClick={onGoogleLogin}
                 disabled={loading}

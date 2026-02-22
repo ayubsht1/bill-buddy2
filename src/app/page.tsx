@@ -4,14 +4,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FEATURES, STEPS } from "@/lib/landing";
 import { Card } from "@/components/ui/card";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { UserDropdown } from "@/components/user-dropdown";
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/" });
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -42,29 +40,19 @@ export default function LandingPage() {
             </Link>
           </nav>
 
-          <div className="flex gap-2">
-            {isAuthenticated ? (
-              <Button
-                variant="outline"
-                onClick={handleLogout}
-                className="cursor-pointer hover:text-destructive"
-              >
-                Logout
-              </Button>
+          <div className="flex gap-2 items-center">
+            {status === "loading" ? (
+              // keeps layout stable, no flicker
+              <div className="h-8 w-24" />
+            ) : status === "authenticated" ? (
+              <UserDropdown />
             ) : (
               <>
                 <Link href="/auth/login">
-                  <Button
-                    variant="outline"
-                    className="cursor-pointer hover:text-primary"
-                  >
-                    Login
-                  </Button>
+                  <Button variant="outline">Login</Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button className="cursor-pointer hover:text-white">
-                    Sign Up
-                  </Button>
+                  <Button>Sign Up</Button>
                 </Link>
               </>
             )}
@@ -90,7 +78,10 @@ export default function LandingPage() {
             roommates, friends, and families who share costs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {isAuthenticated ? (
+            {status === "loading" ? (
+              // keeps layout stable while session hydrates
+              <div className="h-[48px] w-[160px]" />
+            ) : status === "authenticated" ? (
               <Link href="/dashboard">
                 <Button
                   size="lg"
@@ -127,7 +118,7 @@ export default function LandingPage() {
       {/* Features Section */}
       <section id="features" className="px-6 md:px-12 py-20 bg-muted/30">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
+          <div className="inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary mb-4">
             Features
           </div>
 
