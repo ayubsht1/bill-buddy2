@@ -30,7 +30,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     accessToken: string;
-    refreshToken?: string;
+    refreshToken: string;
     email: string;
     username: string;
   }
@@ -39,6 +39,7 @@ declare module "next-auth/jwt" {
 declare module "next-auth" {
   interface Session {
     accessToken: string;
+    refreshToken: string;
     user: {
       id: string;         // ✅ string
       email: string;
@@ -116,6 +117,7 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       session.accessToken = token.accessToken;
+      session.refreshToken = token.refreshToken;
       session.user = {
         id: token.id,
         email: token.email,

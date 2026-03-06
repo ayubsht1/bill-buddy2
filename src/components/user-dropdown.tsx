@@ -1,6 +1,7 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { useSignOut } from "@/hooks/use-signout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -16,24 +17,18 @@ import { LogOut, Settings } from "lucide-react";
 
 export function UserDropdown() {
   const { data: session } = useSession();
+  const handleSignOut = useSignOut(); 
+  
   if (!session?.user) return null;
 
-  const {
-    username,
-    name,
-    email,
-    image,
-  } = session.user as {
+  const { username, name, email, image } = session.user as {
     username?: string;
     name?: string | null;
     email?: string | null;
     image?: string | null;
   };
 
-  // ✅ Normalize display values
-  const displayName =
-    username || name || email || "User";
-
+  const displayName = username || name || email || "User";
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
@@ -46,7 +41,6 @@ export function UserDropdown() {
             data-[state=open]:bg-muted
           "
         >
-          {/* Avatar */}
           <Avatar
             className="
               h-8 w-8 transition
@@ -61,10 +55,8 @@ export function UserDropdown() {
             )}
           </Avatar>
 
-          {/* Name */}
           <span
-            className=" text-xs
-              hidden md:inline transition-all
+            className="text-xs hidden md:inline transition-all
               group-data-[state=open]:text-xs
               group-data-[state=open]:text-muted-foreground
             "
@@ -89,9 +81,7 @@ export function UserDropdown() {
               <div className="flex flex-col justify-center">
                 <div className="font-medium">{displayName}</div>
                 {email && (
-                  <div className="text-sm text-muted-foreground">
-                    {email}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{email}</div>
                 )}
               </div>
             </div>
@@ -100,10 +90,13 @@ export function UserDropdown() {
           <DropdownMenuSeparator />
 
           <DropdownMenuItem asChild>
-            <Link href="/settings"><Settings />Settings</Link>
+            <Link href="/settings">
+              <Settings />
+              Settings
+            </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/" })}>
+          <DropdownMenuItem onClick={handleSignOut}>
             <LogOut />
             Sign out
           </DropdownMenuItem>
