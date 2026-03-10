@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, CircleArrowLeft } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,18 +37,18 @@ export default function ResetPasswordPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reset-password/`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/reset-password/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, password }),
+          body: JSON.stringify({ token, new_password:password }),
         }
       );
 
       if (!res.ok) throw new Error();
 
       toast.success("Password reset successful!", { duration: 1500 });
-      setTimeout(() => router.push("/auth/signin"), 1600);
+      setTimeout(() => router.push("/auth/login"), 1600);
     } catch {
       toast.error("Invalid or expired reset link. Please try again.");
     } finally {
@@ -58,12 +58,12 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <a
+      {/* <a
         href="/auth/forgot-password"
         className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 transition"
       >
         <CircleArrowLeft className="text-primary h-8 w-8" />
-      </a>
+      </a> */}
 
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-sm">
@@ -130,13 +130,6 @@ export default function ResetPasswordPage() {
                   {loading ? "Resetting..." : "Reset Password"}
                 </Button>
               </form>
-
-              <div className="mt-4 text-center text-sm">
-                Remember your password?{" "}
-                <a href="/auth/signin" className="underline underline-offset-4">
-                  Sign in
-                </a>
-              </div>
             </CardContent>
           </Card>
         </div>
