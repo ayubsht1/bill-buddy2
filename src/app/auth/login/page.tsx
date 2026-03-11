@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
 import { CircleArrowLeft } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import toast, { Toaster } from "react-hot-toast";
@@ -35,8 +35,17 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    await signIn("google", { callbackUrl: "/auth/callback?success=google" });
-    setLoading(false);
+    try {
+      const res = await signIn("google", { callbackUrl: "/?success=google", redirect: false });
+
+      if (res?.error) {
+        toast.error("Google login failed. Please try again.");
+      }
+    } catch {
+      toast.error("Request timed out. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

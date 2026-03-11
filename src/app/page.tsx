@@ -6,10 +6,21 @@ import { FEATURES, STEPS } from "@/lib/landing";
 import { Card } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { UserDropdown } from "@/components/user-dropdown";
+import toast, { Toaster } from "react-hot-toast";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation"
+
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
+  const searchParams = useSearchParams();
+    useEffect(() => {
+    if (searchParams.get("success") === "google") {
+      toast.success("Logged in with Google!", { duration: 1000 });
+    }
+  }, []);
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -59,6 +70,8 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
+            <Toaster position="top-center" containerStyle={{ top: 72 }} />
+
 
       {/* Hero Section with background image */}
       <section
