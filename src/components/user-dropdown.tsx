@@ -36,14 +36,15 @@ export function UserDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           className="
-            group flex items-center gap-2 rounded-full px-1 py-1
-            transition
-            data-[state=open]:bg-muted
+            group flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium
+            transition-all duration-200 text-muted-foreground hover:text-primary
+            active:scale-95 outline-none select-none
+            data-[state=open]:bg-primary/10 data-[state=open]:text-primary data-[state=open]:font-semibold
           "
         >
           <Avatar
             className="
-              h-8 w-8 transition
+              h-6 w-6 transition-all duration-200
               group-data-[state=open]:ring-2
               group-data-[state=open]:ring-primary/40
             "
@@ -51,54 +52,71 @@ export function UserDropdown() {
             {image ? (
               <AvatarImage src={image} alt={displayName} />
             ) : (
-              <AvatarFallback>{initials}</AvatarFallback>
+              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+                {initials}
+              </AvatarFallback>
             )}
           </Avatar>
 
-          <span
-            className="text-xs hidden md:inline transition-all
-              group-data-[state=open]:text-xs
-              group-data-[state=open]:text-muted-foreground
-            "
-          >
+          <span className="hidden md:inline">
             {displayName}
           </span>
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuPortal>
-        <DropdownMenuContent align="end" sideOffset={8}>
-          <DropdownMenuLabel>
+        <DropdownMenuContent 
+          align="end" 
+          sideOffset={8}
+          className="w-56 bg-card text-foreground border border-muted p-2 rounded-lg shadow-md backdrop-blur-md"
+        >
+          <DropdownMenuLabel className="px-2 py-2.5">
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 {image ? (
                   <AvatarImage src={image} alt={displayName} />
                 ) : (
-                  <AvatarFallback>{initials}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    {initials}
+                  </AvatarFallback>
                 )}
               </Avatar>
 
-              <div className="flex flex-col justify-center">
-                <div className="font-medium">{displayName}</div>
+              <div className="flex flex-col justify-center min-w-0">
+                <div className="font-semibold text-sm truncate text-foreground">{displayName}</div>
                 {email && (
-                  <div className="text-sm text-muted-foreground">{email}</div>
+                  <div className="text-xs text-muted-foreground truncate">{email}</div>
                 )}
               </div>
             </div>
           </DropdownMenuLabel>
 
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="bg-muted my-1" />
 
           <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <Settings />
-              Settings
+            <Link 
+              href="/settings"
+              className="
+                flex items-center gap-2 px-2 py-2 text-sm rounded-md cursor-pointer
+                text-muted-foreground transition-colors duration-150
+                focus:bg-primary/10 focus:text-primary focus:font-medium outline-none
+              "
+            >
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={handleSignOut}>
-            <LogOut />
-            Sign out
+          <DropdownMenuItem 
+            onClick={handleSignOut}
+            className="
+              flex items-center gap-2 px-2 py-2 text-sm rounded-md cursor-pointer
+              text-muted-foreground transition-colors duration-150
+              focus:bg-destructive/10 focus:text-destructive focus:font-medium outline-none
+            "
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sign out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenuPortal>
