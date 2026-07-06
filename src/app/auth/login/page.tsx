@@ -7,6 +7,7 @@ import { CircleArrowLeft, X } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
+import {ResendVerificationModal} from "@/components/auth/ResendVerificationModal";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,12 +55,12 @@ export default function LoginPage() {
     try {
       // Adjust this URL to point to your actual Django resend verification endpoint
       await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/resend-activation/`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/resend-verification/`,
         {
           email: email,
         },
       );
-      toast.success("Verification link sent! Check your inbox.");
+      toast.success("Verification link sent! Check your inbox within 10 minutes.");
       setShowVerifyModal(false);
     } catch (err) {
       toast.error("Failed to resend link. Please try again.");
@@ -110,48 +111,12 @@ export default function LoginPage() {
       </div>
 
       {/* 💡 Verification Modal Overlay */}
-      {showVerifyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-md rounded-xl border bg-background p-6 shadow-lg animate-in fade-in zoom-in-95 duration-200">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowVerifyModal(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {/* Modal Content */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold tracking-tight text-destructive">
-                Account Activation Required
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {modalErrorMessage}
-              </p>
-
-              {/* Actions */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowVerifyModal(false)}
-                  className="px-4 py-2 text-sm font-medium border rounded-md hover:bg-muted transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={resending}
-                  onClick={handleResendVerification}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/95 disabled:opacity-50 transition"
-                >
-                  {resending ? "Sending Link..." : "Resend Verification Email"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResendVerificationModal
+      showVerifyModal={showVerifyModal}
+      setShowVerifyModal={setShowVerifyModal}
+      modalErrorMessage={modalErrorMessage}
+      resending={resending}
+      handleResendVerification={handleResendVerification}/>
 
       <Toaster position="top-center" />
     </>

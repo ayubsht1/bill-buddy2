@@ -345,7 +345,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 space-y-3 text-sm text-muted-foreground">
               <p className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">Email:</span> support@billbuddy.com
+                <span className="font-semibold text-foreground">Email:</span> billbuddy789@gmail.com
               </p>
               <p className="flex items-center gap-2">
                 <span className="font-semibold text-foreground">Location:</span> Remote / Global
