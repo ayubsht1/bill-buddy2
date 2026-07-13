@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { UserDropdown } from "@/components/user-dropdown";
 import toast, { Toaster } from "react-hot-toast";
 import { useEffect, useState } from "react"; // 👈 Added useState
-import { useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams,useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 
 // Explicit variant maps with 'as const' literal typing
@@ -33,16 +33,40 @@ export default function LandingPage() {
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const pathname = usePathname();
 
   // 👈 State to hold the current active section ID (e.g. "features", "how-it-works")
   const [activeSection, setActiveSection] = useState<string>("");
 
-  useEffect(() => {
-    if (searchParams.get("success") === "google") {
-      toast.success("Logged in with Google!", { duration: 1000 });
+ useEffect(() => {
+    const successParam = searchParams.get("success");
+    const errorParam = searchParams.get("error");
+
+    // 1. Check for success
+    if (successParam === "google") {
+      toast.success("Successfully logged in with Google!");
+      cleanUrl();
+    } 
+    // 2. Check for native NextAuth OAuth errors
+    else if (errorParam) {
+      console.error("Auth Error Code:", errorParam);
+      toast.error("Authentication failed. Please try again.");
+      cleanUrl();
     }
-  }, [searchParams]);
+
+    // Helper to strip the query flags without forcing a hard page reload
+    function cleanUrl() {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("success");
+      params.delete("error");
+      
+      const query = params.toString();
+      const cleanPath = query ? `${pathname}?${query}` : pathname;
+      
+      router.replace(cleanPath, { scroll: false });
+    }
+  }, [searchParams, pathname, router]);
 
   // 👈 IntersectionObserver setup to dynamically listen to scroll highlights
   useEffect(() => {

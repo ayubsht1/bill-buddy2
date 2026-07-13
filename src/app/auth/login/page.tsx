@@ -7,7 +7,7 @@ import { CircleArrowLeft, X } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
-import {ResendVerificationModal} from "@/components/auth/ResendVerificationModal";
+import { ResendVerificationModal } from "@/components/auth/ResendVerificationModal";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -60,7 +60,9 @@ export default function LoginPage() {
           email: email,
         },
       );
-      toast.success("Verification link sent! Check your inbox within 10 minutes.");
+      toast.success(
+        "Verification link sent! Check your inbox within 10 minutes.",
+      );
       setShowVerifyModal(false);
     } catch (err) {
       toast.error("Failed to resend link. Please try again.");
@@ -72,18 +74,13 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const res = await signIn("google", {
+      await signIn("google", {
         callbackUrl: "/?success=google",
-        redirect: false,
       });
-
-      if (res?.error) {
-        toast.error("Google login failed. Please try again.");
-      }
-    } catch {
-      toast.error("Request timed out. Please try again.");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Google redirection failed:", error);
+      toast.error("Could not redirect to Google. Please try again.");
+      setLoading(false); // Only need to turn off loading if the redirect fails
     }
   };
 
@@ -112,11 +109,12 @@ export default function LoginPage() {
 
       {/* 💡 Verification Modal Overlay */}
       <ResendVerificationModal
-      showVerifyModal={showVerifyModal}
-      setShowVerifyModal={setShowVerifyModal}
-      modalErrorMessage={modalErrorMessage}
-      resending={resending}
-      handleResendVerification={handleResendVerification}/>
+        showVerifyModal={showVerifyModal}
+        setShowVerifyModal={setShowVerifyModal}
+        modalErrorMessage={modalErrorMessage}
+        resending={resending}
+        handleResendVerification={handleResendVerification}
+      />
 
       <Toaster position="top-center" />
     </>
