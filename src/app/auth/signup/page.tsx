@@ -6,7 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { SignupForm } from "@/components/auth/SignupForm";
 import api from "@/lib/api/api";
 import { CircleArrowLeft } from "lucide-react";
-
+import { motion } from "framer-motion";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -52,33 +52,47 @@ export default function SignupPage() {
 
   return (
     <>
-    <a
+      {/* 🌟 Animated Back Button: Smooth entry and spring-back hover */}
+      <motion.a
         href="/"
-        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 transition"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ scale: 1.08, x: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
       >
         <CircleArrowLeft className="text-primary h-8 w-8" />
-      </a>
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <SignupForm
-          firstName={firstName}
-          setFirstName={setFirstName}
-          lastName={lastName}
-          setLastName={setLastName}
-          username={username}
-          setUsername={setUsername}
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          confirmPassword={confirmPassword}
-          setConfirmPassword={setConfirmPassword}
-          loading={loading}
-          onSubmit={handleSubmit}
+      </motion.a>
+
+      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
+        {/* 🌟 Signup Card Wrapper: Matching slide-up spring style */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-sm"
+        >
+          <SignupForm
+            firstName={firstName}
+            setFirstName={setFirstName}
+            lastName={lastName}
+            setLastName={setLastName}
+            username={username}
+            setUsername={setUsername}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            confirmPassword={confirmPassword}
+            setConfirmPassword={setConfirmPassword}
+            loading={loading}
+            onSubmit={handleSubmit}
           />
+        </motion.div>
       </div>
+      
       <Toaster position="top-center" />
-    </div>
     </>
   );
 }

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { CircleArrowLeft, X } from "lucide-react";
+import { CircleArrowLeft } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { ResendVerificationModal } from "@/components/auth/ResendVerificationModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,14 +34,12 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error) {
-      // 💡 Check explicitly for your custom code enum string
       if (res.code === "ACCOUNT_NOT_ACTIVATED") {
         setModalErrorMessage(
           "Account not activated. Please verify your email.",
         );
         setShowVerifyModal(true);
       } else {
-        // Normal toast for incorrect passwords or other bad responses
         toast.error(res.code || "Invalid email or password");
       }
     } else {
@@ -49,16 +48,12 @@ export default function LoginPage() {
     }
   };
 
-  // 💡 Resend Verification Logic
   const handleResendVerification = async () => {
     setResending(true);
     try {
-      // Adjust this URL to point to your actual Django resend verification endpoint
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/resend-verification/`,
-        {
-          email: email,
-        },
+        { email },
       );
       toast.success(
         "Verification link sent! Check your inbox within 10 minutes.",
@@ -80,21 +75,33 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Google redirection failed:", error);
       toast.error("Could not redirect to Google. Please try again.");
-      setLoading(false); // Only need to turn off loading if the redirect fails
+      setLoading(false);
     }
   };
 
   return (
     <>
-      <a
+      {/* 🌟 Animated Back Button: Smooth spring bounce hover */}
+      <motion.a
         href="/"
-        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 transition"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ scale: 1.08, x: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
       >
         <CircleArrowLeft className="text-primary h-8 w-8" />
-      </a>
+      </motion.a>
 
-      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-sm">
+      {/* 🌟 Entry animation for the core page container */}
+      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} // Custom springy ease-out
+          className="w-full max-w-sm"
+        >
           <LoginForm
             email={email}
             setEmail={setEmail}
@@ -104,17 +111,21 @@ export default function LoginPage() {
             onSubmit={handleSubmit}
             onGoogleLogin={handleGoogleLogin}
           />
-        </div>
+        </motion.div>
       </div>
 
-      {/* 💡 Verification Modal Overlay */}
-      <ResendVerificationModal
-        showVerifyModal={showVerifyModal}
-        setShowVerifyModal={setShowVerifyModal}
-        modalErrorMessage={modalErrorMessage}
-        resending={resending}
-        handleResendVerification={handleResendVerification}
-      />
+      {/* 🌟 AnimatePresence guarantees smooth fade-out when unmounting */}
+      <AnimatePresence>
+        {showVerifyModal && (
+          <ResendVerificationModal
+            showVerifyModal={showVerifyModal}
+            setShowVerifyModal={setShowVerifyModal}
+            modalErrorMessage={modalErrorMessage}
+            resending={resending}
+            handleResendVerification={handleResendVerification}
+          />
+        )}
+      </AnimatePresence>
 
       <Toaster position="top-center" />
     </>

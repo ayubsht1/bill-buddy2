@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import toast, { Toaster } from "react-hot-toast";
+import { motion } from "framer-motion";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function ResetPasswordPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, new_password:password }),
+          body: JSON.stringify({ token, new_password: password }),
         }
       );
 
@@ -58,15 +59,14 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      {/* <a
-        href="/auth/forgot-password"
-        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 transition"
-      >
-        <CircleArrowLeft className="text-primary h-8 w-8" />
-      </a> */}
-
-      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-sm">
+      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
+        {/* 🌟 Smooth Springy Card Entry Animation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-sm"
+        >
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-xl">Reset Password</CardTitle>
@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     >
                       {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -122,17 +122,20 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full cursor-pointer"
-                  disabled={loading || !password || !confirmPassword}
-                >
-                  {loading ? "Resetting..." : "Reset Password"}
-                </Button>
+                {/* Submit button tap response */}
+                <motion.div whileTap={!(loading || !password || !confirmPassword) ? { scale: 0.985 } : {}}>
+                  <Button
+                    type="submit"
+                    className="w-full cursor-pointer"
+                    disabled={loading || !password || !confirmPassword}
+                  >
+                    {loading ? "Resetting..." : "Reset Password"}
+                  </Button>
+                </motion.div>
               </form>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
 
       <Toaster position="top-center" />

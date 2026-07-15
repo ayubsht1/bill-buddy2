@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import toast, { Toaster } from "react-hot-toast";
+import { motion } from "framer-motion";
 
 export default function PasswordResetPage() {
   const [email, setEmail] = useState("");
@@ -38,9 +39,27 @@ export default function PasswordResetPage() {
 
   return (
     <>
+      {/* 🌟 Animated Back Button: Physics-based hover alignment */}
+      <motion.a
+        href="/auth/login"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ scale: 1.08, x: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
+      >
+        <CircleArrowLeft className="text-primary h-8 w-8" />
+      </motion.a>
 
-      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-sm">
+      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
+        {/* 🌟 Animated Form Card Wrapper */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} // Premium custom cubic-bezier
+          className="w-full max-w-sm"
+        >
           <Card>
             <CardHeader>
               <CardTitle className="text-center text-xl">Forgot Password</CardTitle>
@@ -59,24 +78,27 @@ export default function PasswordResetPage() {
                   />
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full cursor-pointer"
-                  disabled={loading || !email}
-                >
-                  {loading ? "Sending..." : "Send Reset Link"}
-                </Button>
+                {/* Submit button micro-interaction */}
+                <motion.div whileTap={!(loading || !email) ? { scale: 0.98 } : {}}>
+                  <Button
+                    type="submit"
+                    className="w-full cursor-pointer"
+                    disabled={loading || !email}
+                  >
+                    {loading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </motion.div>
               </form>
 
               <div className="mt-4 text-center text-sm">
                 Remember your password?{" "}
-                <a href="/auth/login" className="underline underline-offset-4">
+                <a href="/auth/login" className="underline underline-offset-4 hover:text-primary transition-colors">
                   Sign in
                 </a>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
 
       <Toaster position="top-center" />
