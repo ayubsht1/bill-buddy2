@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 
 interface LoginFormProps {
   email: string;
@@ -53,12 +54,12 @@ export function LoginForm({
             <div className="grid gap-3">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
-                <a
+                <Link
                   href="/auth/password-reset/"
                   className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                 >
                   Forgot your password?
-                </a>
+                </Link>
               </div>
 
               <div className="relative">
@@ -102,9 +103,9 @@ export function LoginForm({
 
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
-            <a href="/auth/signup" className="underline underline-offset-4">
+            <Link href="/auth/signup" className="underline underline-offset-4">
               Sign up
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

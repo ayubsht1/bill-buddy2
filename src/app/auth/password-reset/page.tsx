@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import toast, { Toaster } from "react-hot-toast";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function PasswordResetPage() {
   const [email, setEmail] = useState("");
@@ -92,9 +93,9 @@ export default function PasswordResetPage() {
 
               <div className="mt-4 text-center text-sm">
                 Remember your password?{" "}
-                <a href="/auth/login" className="underline underline-offset-4 hover:text-primary transition-colors">
+                <Link href="/auth/login" className="underline underline-offset-4 hover:text-primary transition-colors">
                   Sign in
-                </a>
+                </Link>
               </div>
             </CardContent>
           </Card>

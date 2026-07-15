@@ -7,6 +7,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import api from "@/lib/api/api";
 import { CircleArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -53,17 +54,21 @@ export default function SignupPage() {
   return (
     <>
       {/* 🌟 Animated Back Button: Smooth entry and spring-back hover */}
-      <motion.a
-        href="/"
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         whileHover={{ scale: 1.08, x: -3 }}
         whileTap={{ scale: 0.95 }}
-        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
+        className="absolute top-4 left-4 md:top-8 md:left-8 z-10"
       >
-        <CircleArrowLeft className="text-primary h-8 w-8" />
-      </motion.a>
+        <Link 
+          href="/" 
+          className="block rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200"
+        >
+          <CircleArrowLeft className="text-primary h-8 w-8" />
+        </Link>
+      </motion.div>
 
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
         {/* 🌟 Signup Card Wrapper: Matching slide-up spring style */}

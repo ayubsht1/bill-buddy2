@@ -10,6 +10,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useEffect, useState } from "react"; // 👈 Added useState
 import { useSearchParams,useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import {ModeToggle} from "@/components/mode-toggle";
 
 // Explicit variant maps with 'as const' literal typing
 const fadeInUp = {
@@ -189,7 +190,12 @@ export default function LandingPage() {
             </Link>
           </nav>
 
+         {/* Action Buttons & User Profiles */}
           <div className="flex gap-2 items-center">
+            
+            {/* 🌟 Put the Mode Toggle right here */}
+            <ModeToggle />
+
             {status === "loading" ? (
               <div className="h-8 w-24" />
             ) : status === "authenticated" ? (

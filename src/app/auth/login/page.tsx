@@ -9,6 +9,7 @@ import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { ResendVerificationModal } from "@/components/auth/ResendVerificationModal";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -82,17 +83,21 @@ export default function LoginPage() {
   return (
     <>
       {/* 🌟 Animated Back Button: Smooth spring bounce hover */}
-      <motion.a
-        href="/"
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         whileHover={{ scale: 1.08, x: -3 }}
         whileTap={{ scale: 0.95 }}
-        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
+        className="absolute top-4 left-4 md:top-8 md:left-8 z-10"
       >
-        <CircleArrowLeft className="text-primary h-8 w-8" />
-      </motion.a>
+        <Link 
+          href="/" 
+          className="block rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200"
+        >
+          <CircleArrowLeft className="text-primary h-8 w-8" />
+        </Link>
+      </motion.div>
 
       {/* 🌟 Entry animation for the core page container */}
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
