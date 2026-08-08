@@ -28,8 +28,8 @@ interface DjangoLoginResponse {
       username: string;
       first_name: string;
       last_name: string;
-      profile_picture?: string; // 🌟 Added
-      has_password: boolean; // 🌟 Added
+      profile_picture?: string;
+      has_password: boolean;
     };
   };
 }
@@ -44,8 +44,9 @@ declare module "next-auth/jwt" {
     refreshToken: string;
     email: string;
     username: string;
-    picture?: string; // 🌟 Added
-    has_password: boolean; // 🌟 Added
+    picture?: string;
+    has_password?: boolean;
+    error?: string; // 🌟 Tracks token verification / refresh failures
   }
 }
 
@@ -53,6 +54,7 @@ declare module "next-auth" {
   interface Session {
     accessToken: string;
     refreshToken: string;
+    error?: string; // 🌟 Passed to client if session fails
     user: {
       id: string;
       email: string;
@@ -66,8 +68,61 @@ declare module "next-auth" {
     username?: string;
     accessToken?: string;
     refreshToken?: string;
-    picture?: string; // 🌟 Added
-    hasPassword?: boolean; // 🌟 Added
+    picture?: string;
+    hasPassword?: boolean;
+  }
+}
+
+/* =======================
+   Token Validation & Refresh Helpers
+======================= */
+
+// 1. Check if Django access token is still active/valid
+// ⚡ In-Memory Approach
+function isTokenValid(accessToken: string): boolean {
+  if (!accessToken) return false;
+  try {
+    // 1. Extract and decode the middle part (payload) of the JWT string
+    const payloadBase64 = accessToken.split(".")[1];
+    const decodedJson = Buffer.from(payloadBase64, "base64").toString("utf-8");
+    const { exp } = JSON.parse(decodedJson);
+
+    // 2. Compare token expiration timestamp with current time
+    const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+    return exp > currentTimeInSeconds + 10; // 10-second buffer
+  } catch (error) {
+    return false;
+  }
+}
+
+// 2. Exchange refresh token for a fresh access token
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  try {
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/token/refresh/`,
+      { refresh: token.refreshToken },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const refreshedData = response.data;
+
+    if (!refreshedData.success) {
+      throw new Error("Refresh failed on backend");
+    }
+
+    return {
+      ...token,
+      accessToken: refreshedData.data.access,
+      // If backend rotates refresh tokens, save new one; else keep old one
+      refreshToken: refreshedData.data.refresh ?? token.refreshToken,
+      error: undefined, // Clear any errors
+    };
+  } catch (error) {
+    console.error("Failed to refresh Django access token", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError", // Signal client to log out
+    };
   }
 }
 
@@ -109,7 +164,7 @@ export const authOptions: NextAuthConfig = {
             email: user.email,
             username: user.username,
             name: `${user.first_name} ${user.last_name}`,
-            picture: user.profile_picture, // 🌟 Added
+            picture: user.profile_picture,
             accessToken: access,
             refreshToken: refresh,
           };
@@ -139,7 +194,6 @@ export const authOptions: NextAuthConfig = {
   ],
 
   callbacks: {
-    // 🌟 INTERCEPT GOOGLE SIGN IN AND FORWARD TO DJANGO
     async signIn({ account, profile, user: nextAuthUser }) {
       if (account?.provider === "google") {
         try {
@@ -157,7 +211,6 @@ export const authOptions: NextAuthConfig = {
           if (response.data.success) {
             const { access, refresh, user: djangoUser } = response.data.data;
             
-            // 🌟 Mutate the local `nextAuthUser` reference instead of the read-only `account`
             nextAuthUser.id = String(djangoUser.id);
             nextAuthUser.email = djangoUser.email;
             nextAuthUser.username = djangoUser.username;
@@ -176,29 +229,38 @@ export const authOptions: NextAuthConfig = {
       return true;
     },
 
-    // 🌟 UPDATED TO HANDLE INJECTED GOOGLE TOKENS
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
+      // 1. Initial Login: set user data and tokens in JWT
       if (user) {
         token.id = user.id!;
         token.email = user.email!;
         token.username = user.username || user.email?.split("@")[0] || "";
         token.picture = user.picture || "";
-        
         token.accessToken = user.accessToken || "";
         token.refreshToken = user.refreshToken || "";
+        return token;
       }
-      return token;
+
+      // 2. Subsequent session checks: Verify access token with Django
+      const valid = await isTokenValid(token.accessToken);
+      if (valid) {
+        return token; // Access token is fine! Return as-is
+      }
+
+      // 3. Access token is expired/invalid -> Refresh it seamlessly
+      return await refreshAccessToken(token);
     },
 
     async session({ session, token }) {
       session.accessToken = token.accessToken || "";
       session.refreshToken = token.refreshToken || "";
+      session.error = token.error; // Expose refresh failure error if any
       session.user = {
         ...session.user,
         id: token.id || "",
         email: token.email || "",
         username: token.username || "",
-        image: token.picture || "", // This maps out natively to NextAuth image property
+        image: token.picture || "",
       };
       return session;
     },
