@@ -14,11 +14,13 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider>
       <AppSidebar />
 
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      {/* Added `relative h-screen overflow-y-auto` so the scroll container is explicitly defined */}
+      <SidebarInset className="relative h-screen overflow-y-auto">
+        {/* Added `sticky top-0 z-50 bg-background/95 backdrop-blur border-b` */}
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b flex h-16 shrink-0 items-center transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex w-full items-center justify-between px-4">
             {/* Left section: Sidebar trigger, separator, and breadcrumbs */}
             <div className="flex items-center gap-2">
