@@ -32,7 +32,7 @@ export default function LoginPage() {
 
     switch (errorParam) {
       case "GoogleBackendSyncFailed":
-        toast.error("Google login failed. Please try again later.");
+        toast.error("Internal Server Error. Please try again later.");
         break;
       case "AccessDenied":
         toast.error("Access was denied during sign in.");
@@ -45,7 +45,7 @@ export default function LoginPage() {
         toast.error("Could not complete OAuth login. Please try again later.");
         break;
       default:
-        toast.error("Authentication failed. Please try again.");
+        toast.error("Authentication failed. Please try again later.");
         break;
     }
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
       });
     } catch (error) {
       console.error("Google redirection failed:", error);
-      toast.error("Could not redirect to Google. Please try again.");
+      toast.error("Could not redirect to Google. Please try again later.");
       setLoading(false);
     }
   };
