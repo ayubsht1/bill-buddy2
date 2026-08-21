@@ -8,19 +8,22 @@ export async function middleware(req: NextRequest) {
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   });
 
-  const isAuthenticated = !!token;
+  const hasRefreshError = token?.error === "RefreshAccessTokenError";
+  const isAuthenticated = !!token && !hasRefreshError;
   const isAuthPage = req.nextUrl.pathname.startsWith("/auth");
 
-  // 1. If trying to access auth pages while already logged in -> Send to Dashboard
-  if (isAuthPage && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // 2. If trying to access protected pages while logged out -> Send to Login
-  if (!isAuthenticated && !isAuthPage) {
+  if ((!isAuthenticated || hasRefreshError) && !isAuthPage) {
     const signInUrl = new URL("/auth/login", req.url);
     signInUrl.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
-    return NextResponse.redirect(signInUrl);
+    
+    const response = NextResponse.redirect(signInUrl);
+    response.cookies.delete("next-auth.session-token");
+    response.cookies.delete("__Secure-next-auth.session-token");
+    return response;
+  }
+
+  if (isAuthPage && isAuthenticated) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
@@ -32,6 +35,6 @@ export const config = {
     "/groups/:path*",
     "/settings/:path*",
     "/profile/:path*",
-    "/auth/:path*", // Include auth routes to restrict logged-in users from re-login
+    "/auth/:path*",
   ],
 };
