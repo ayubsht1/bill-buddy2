@@ -101,7 +101,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     const response = await axios.post(
       `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/token/refresh/`,
       { refresh: token.refreshToken },
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json" } },
     );
 
     const refreshedData = response.data;
@@ -150,11 +150,13 @@ export const authOptions: NextAuthConfig = {
               email: credentials.email,
               password: credentials.password,
             },
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { "Content-Type": "application/json" } },
           );
 
           if (!res.data.success) {
-            throw new DjangoAuthError(res.data.data?.message || "Invalid credentials");
+            throw new DjangoAuthError(
+              res.data.data?.message || "Invalid credentials",
+            );
           }
 
           const { user, access, refresh } = res.data.data;
@@ -189,7 +191,8 @@ export const authOptions: NextAuthConfig = {
 
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+      clientSecret:
+        process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
 
@@ -201,16 +204,16 @@ export const authOptions: NextAuthConfig = {
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/google-login/`,
             {
               email: profile?.email,
-              picture: profile?.picture,      
-              given_name: profile?.given_name, 
-              family_name: profile?.family_name, 
+              picture: profile?.picture,
+              given_name: profile?.given_name,
+              family_name: profile?.family_name,
             },
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { "Content-Type": "application/json" } },
           );
 
           if (response.data.success) {
             const { access, refresh, user: djangoUser } = response.data.data;
-            
+
             nextAuthUser.id = String(djangoUser.id);
             nextAuthUser.email = djangoUser.email;
             nextAuthUser.username = djangoUser.username;
@@ -218,12 +221,16 @@ export const authOptions: NextAuthConfig = {
             nextAuthUser.accessToken = access;
             nextAuthUser.refreshToken = refresh;
 
-            return true; 
+            return true;
           }
-          return false;
+          // 🌟 Redirect back to sign-in page with custom error param
+          return "/auth/login?error=GoogleBackendSyncFailed";
         } catch (error) {
-          console.error("Failed to sync Google user with Django backend", error);
-          return false;
+          console.error(
+            "Failed to sync Google user with Django backend",
+            error,
+          );
+          return "/auth/login?error=GoogleBackendSyncFailed";
         }
       }
       return true;
@@ -267,9 +274,9 @@ export const authOptions: NextAuthConfig = {
   },
 
   pages: {
-    signIn: "/auth/signin",
+    signIn: "/auth/login",
   },
-  
+
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 };
 

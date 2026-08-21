@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CircleArrowLeft } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 import toast, { Toaster } from "react-hot-toast";
@@ -13,6 +13,8 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,35 @@ export default function LoginPage() {
   // 💡 Modal State
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [modalErrorMessage, setModalErrorMessage] = useState("");
+
+  // 🌟 Capture NextAuth URL error parameters and display toasts
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+
+    if (!errorParam) return;
+
+    switch (errorParam) {
+      case "GoogleBackendSyncFailed":
+        toast.error("Google login failed. Please try again later.");
+        break;
+      case "AccessDenied":
+        toast.error("Access was denied during sign in.");
+        break;
+      case "OAuthSignin":
+      case "OAuthCallback":
+      case "OAuthCreateAccount":
+      case "EmailCreateAccount":
+      case "Callback":
+        toast.error("Could not complete OAuth login. Please try again later.");
+        break;
+      default:
+        toast.error("Authentication failed. Please try again.");
+        break;
+    }
+
+    // Clean up error param from the address bar without triggering a full re-render
+    router.replace("/auth/login", { scroll: false });
+  }, [searchParams, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -82,7 +113,7 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* 🌟 Animated Back Button: Smooth spring bounce hover */}
+      {/* 🌟 Animated Back Button */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -91,8 +122,8 @@ export default function LoginPage() {
         whileTap={{ scale: 0.95 }}
         className="absolute top-4 left-4 md:top-8 md:left-8 z-10"
       >
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="block rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200"
         >
           <CircleArrowLeft className="text-primary h-8 w-8" />
@@ -104,7 +135,7 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} // Custom springy ease-out
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-sm"
         >
           <LoginForm
@@ -119,7 +150,7 @@ export default function LoginPage() {
         </motion.div>
       </div>
 
-      {/* 🌟 AnimatePresence guarantees smooth fade-out when unmounting */}
+      {/* 🌟 Verification Modal */}
       <AnimatePresence>
         {showVerifyModal && (
           <ResendVerificationModal
