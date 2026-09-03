@@ -100,20 +100,6 @@ const data = {
       title: "Settings",
       url: "/settings",
       icon: Settings,
-      items: [
-        {
-          title: "Profile",
-          url: "/settings/profile",
-        },
-        {
-          title: "Payment Methods",
-          url: "/settings/payments",
-        },
-        {
-          title: "Notifications",
-          url: "/settings/notifications",
-        },
-      ],
     },
   ],
 }
