@@ -39,23 +39,23 @@ const data = {
       isActive: true,
     },
     {
-      title: "Expenses & Bills",
+      title: "Personal Expenses",
       url: "/expenses",
       icon: Receipt,
-      items: [
-        {
-          title: "All Expenses",
-          url: "/expenses",
-        },
-        {
-          title: "Add a Bill",
-          url: "/expenses/new",
-        },
-        {
-          title: "Recurring Bills",
-          url: "/expenses/recurring",
-        },
-      ],
+      // items: [
+      //   {
+      //     title: "All Expenses",
+      //     url: "/expenses",
+      //   },
+      //   {
+      //     title: "Add a Bill",
+      //     url: "/expenses/new",
+      //   },
+      //   {
+      //     title: "Recurring Bills",
+      //     url: "/expenses/recurring",
+      //   },
+      // ],
     },
     {
       title: "Groups & Friends",

@@ -13,7 +13,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  TooltipProps,
 } from "recharts";
 import {
   NameType,
@@ -60,11 +59,41 @@ interface HistoricalItem {
 
 // Category Data
 const CATEGORY_DATA: CategoryItem[] = [
-  { name: "Groceries", value: 450, color: "hsl(var(--primary))", pct: 36, trend: "+4%" },
-  { name: "Rent & Utilities", value: 380, color: "hsl(217, 91%, 60%)", pct: 30, trend: "0%" },
-  { name: "Dining Out", value: 220, color: "hsl(262, 83%, 58%)", pct: 18, trend: "-12%" },
-  { name: "Entertainment", value: 120, color: "hsl(187, 92%, 41%)", pct: 10, trend: "+2%" },
-  { name: "Subscriptions", value: 80, color: "hsl(316, 70%, 50%)", pct: 6, trend: "0%" },
+  {
+    name: "Groceries",
+    value: 450,
+    color: "hsl(var(--primary))",
+    pct: 36,
+    trend: "+4%",
+  },
+  {
+    name: "Rent & Utilities",
+    value: 380,
+    color: "hsl(217, 91%, 60%)",
+    pct: 30,
+    trend: "0%",
+  },
+  {
+    name: "Dining Out",
+    value: 220,
+    color: "hsl(262, 83%, 58%)",
+    pct: 18,
+    trend: "-12%",
+  },
+  {
+    name: "Entertainment",
+    value: 120,
+    color: "hsl(187, 92%, 41%)",
+    pct: 10,
+    trend: "+2%",
+  },
+  {
+    name: "Subscriptions",
+    value: 80,
+    color: "hsl(316, 70%, 50%)",
+    pct: 6,
+    trend: "0%",
+  },
 ];
 
 const HISTORICAL_DATA: HistoricalItem[] = [
@@ -94,18 +123,26 @@ const cardVariants: Variants = {
   },
 };
 
+// Explicit interface to resolve TypeScript property missing errors
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name?: NameType;
+    value?: ValueType;
+    color?: string;
+    fill?: string;
+  }>;
+  label?: string | number;
+}
+
 // Strongly-typed Recharts Tooltip Component
-const CustomTooltip = ({
-  active,
-  payload,
-  label,
-}: TooltipProps<ValueType, NameType>) => {
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border border-border bg-popover/95 p-2.5 sm:p-3 shadow-lg backdrop-blur-sm text-xs space-y-1.5 text-popover-foreground">
         <p className="font-semibold">{label}</p>
         <div className="space-y-1 border-t border-border pt-1.5">
-          {payload.map((entry: Payload<ValueType, NameType>, index: number) => (
+          {payload.map((entry, index: number) => (
             <div
               key={`item-${index}`}
               className="flex items-center justify-between gap-3 sm:gap-4"
@@ -441,7 +478,7 @@ export default function ProfessionalDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={HISTORICAL_DATA}
-                    margin={{ top: 10, right: 5, left: -25, bottom: 0 }}
+                    margin={{ top: 10, right: 5, left: 0, bottom: 0 }} // Changed left from -25 to 0
                     barGap={4}
                   >
                     <CartesianGrid
@@ -456,15 +493,16 @@ export default function ProfessionalDashboard() {
                       tickLine={false}
                       tick={{
                         fontSize: 11,
-                        fill: "hsl(var(--muted-foreground))",
+                        fill: "var(--muted-foreground)",
                       }}
                     />
                     <YAxis
+                      width={45} // Explicitly sets axis width for formatted currency labels
                       axisLine={false}
                       tickLine={false}
                       tick={{
                         fontSize: 11,
-                        fill: "hsl(var(--muted-foreground))",
+                        fill: "var(--muted-foreground)",
                       }}
                       tickFormatter={(value) => `$${value}`}
                     />

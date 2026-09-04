@@ -1,7 +1,7 @@
 "use client"
 import { useSignOut } from "@/hooks/use-signout";
 import {
-  BadgeCheck,
+  Settings,
   Bell,
   ChevronsUpDown,
   LogOut,
@@ -27,6 +27,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import Link from "next/link";
 
 export function NavUser({
   user,
@@ -80,8 +81,10 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <BadgeCheck />
-                Account
+                <Settings />
+                <Link href="/settings">
+                Profile
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />

@@ -2,7 +2,7 @@
 
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Shield, KeyRound, Camera, Check, AlertCircle, Bell, Mail, Smartphone, Megaphone } from 'lucide-react';
+import { User, Shield, KeyRound, Camera, Check, AlertCircle, Bell, Mail, Smartphone } from 'lucide-react';
 
 const MOCK_USER = {
   id: 1,
@@ -21,6 +21,32 @@ const MOCK_USER = {
 };
 
 type Section = 'profile' | 'security' | 'notifications';
+
+// Helper component for animated alert feedback messages
+const FormAlert = ({ msg }: { msg: { type: 'success' | 'error'; text: string } | null }) => (
+  <AnimatePresence mode="wait">
+    {msg && (
+      <motion.div
+        initial={{ opacity: 0, y: -10, height: 0 }}
+        animate={{ opacity: 1, y: 0, height: 'auto' }}
+        exit={{ opacity: 0, y: -10, height: 0 }}
+        transition={{ duration: 0.2 }}
+        className={`p-4 rounded-lg text-sm flex items-center space-x-2.5 overflow-hidden ${
+          msg.type === 'success'
+            ? 'bg-accent text-accent-foreground border border-accent'
+            : 'bg-destructive/10 text-destructive border border-destructive/20'
+        }`}
+      >
+        {msg.type === 'success' ? (
+          <Check className="w-5 h-5 shrink-0" />
+        ) : (
+          <AlertCircle className="w-5 h-5 shrink-0" />
+        )}
+        <span>{msg.text}</span>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState(MOCK_USER);
@@ -79,17 +105,21 @@ export default function SettingsPage() {
   };
 
   return (
-    // Changed max-w-5xl to w-full with max-w-7xl to let content breathe on wide monitors
     <div className="w-full max-w-7xl mx-auto p-6 lg:p-10 text-foreground">
-      <div className="mb-8">
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-8"
+      >
         <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Settings</h1>
         <p className="text-base text-muted-foreground mt-1.5">
           Manage your account credentials, profile details, security, and notification preferences.
         </p>
-      </div>
+      </motion.div>
 
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
-        {/* Sidebar Navigation - Expanded width for large viewports */}
+        {/* Sidebar Navigation */}
         <aside className="w-full lg:w-72 shrink-0 space-y-1.5">
           {[
             { id: 'profile', label: 'Profile', icon: User },
@@ -99,8 +129,9 @@ export default function SettingsPage() {
             const isActive = activeSection === item.id;
             const Icon = item.icon;
             return (
-              <button
+              <motion.button
                 key={item.id}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveSection(item.id as Section)}
                 className={`relative w-full flex items-center space-x-3.5 px-4 py-3.5 text-base font-medium rounded-lg transition-colors ${
                   isActive
@@ -117,21 +148,21 @@ export default function SettingsPage() {
                 )}
                 <Icon className="relative z-10 w-5 h-5 shrink-0" />
                 <span className="relative z-10">{item.label}</span>
-              </button>
+              </motion.button>
             );
           })}
         </aside>
 
-        {/* Main Section Card - Flex-1 fill */}
+        {/* Main Section Card */}
         <main className="flex-1 w-full bg-card text-card-foreground border border-border rounded-2xl p-6 sm:p-8 lg:p-10 shadow-sm min-h-[520px]">
           <AnimatePresence mode="wait">
             {activeSection === 'profile' && (
               <motion.form
                 key="profile-section"
-                initial={{ opacity: 0, x: 8 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
                 onSubmit={handleProfileSubmit}
                 className="space-y-8"
               >
@@ -142,34 +173,27 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                {profileMsg && (
-                  <div
-                    className={`p-4 rounded-lg text-sm flex items-center space-x-2.5 ${
-                      profileMsg.type === 'success'
-                        ? 'bg-accent text-accent-foreground border border-accent'
-                        : 'bg-destructive/10 text-destructive border border-destructive/20'
-                    }`}
-                  >
-                    {profileMsg.type === 'success' ? (
-                      <Check className="w-5 h-5 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 shrink-0" />
-                    )}
-                    <span>{profileMsg.text}</span>
-                  </div>
-                )}
+                <FormAlert msg={profileMsg} />
 
-                {/* Avatar Section - Scaled up */}
+                {/* Avatar Section */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-6">
                   <motion.div
-                    whileHover={{ scale: 1.03 }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
                     className="relative shrink-0 w-24 h-24 rounded-full overflow-hidden border-2 border-border bg-muted flex items-center justify-center group shadow-sm"
                   >
-                    <img
-                      className="w-full h-full object-cover"
-                      src={previewUrl}
-                      alt="Avatar preview"
-                    />
+                    <AnimatePresence mode="wait">
+                      <motion.img
+                        key={previewUrl}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="w-full h-full object-cover"
+                        src={previewUrl}
+                        alt="Avatar preview"
+                      />
+                    </AnimatePresence>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Camera className="w-6 h-6 text-white" />
                     </div>
@@ -193,7 +217,7 @@ export default function SettingsPage() {
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
                     />
                   </div>
                   <div>
@@ -202,7 +226,7 @@ export default function SettingsPage() {
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
                     />
                   </div>
                 </div>
@@ -214,7 +238,7 @@ export default function SettingsPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
                     />
                   </div>
                   <div>
@@ -244,10 +268,10 @@ export default function SettingsPage() {
             {activeSection === 'security' && (
               <motion.div
                 key="security-section"
-                initial={{ opacity: 0, x: 8 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="space-y-10"
               >
                 {/* Password Form */}
@@ -261,22 +285,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  {passwordMsg && (
-                    <div
-                      className={`p-4 rounded-lg text-sm flex items-center space-x-2.5 ${
-                        passwordMsg.type === 'success'
-                          ? 'bg-accent text-accent-foreground border border-accent'
-                          : 'bg-destructive/10 text-destructive border border-destructive/20'
-                      }`}
-                    >
-                      {passwordMsg.type === 'success' ? (
-                        <Check className="w-5 h-5 shrink-0" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                      )}
-                      <span>{passwordMsg.text}</span>
-                    </div>
-                  )}
+                  <FormAlert msg={passwordMsg} />
 
                   <div className="space-y-5 max-w-xl">
                     {profile.has_password && (
@@ -287,7 +296,7 @@ export default function SettingsPage() {
                           required
                           value={oldPassword}
                           onChange={(e) => setOldPassword(e.target.value)}
-                          className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                          className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
                         />
                       </div>
                     )}
@@ -301,7 +310,7 @@ export default function SettingsPage() {
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-full px-4 py-3 text-base bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-shadow"
                       />
                     </div>
 
@@ -340,8 +349,10 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <button
+                    <motion.button
                       type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.96 }}
                       onClick={() => setIs2FAEnabled(!is2FAEnabled)}
                       className={`px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors shrink-0 ${
                         is2FAEnabled
@@ -350,7 +361,7 @@ export default function SettingsPage() {
                       }`}
                     >
                       {is2FAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>
@@ -359,10 +370,10 @@ export default function SettingsPage() {
             {activeSection === 'notifications' && (
               <motion.form
                 key="notifications-section"
-                initial={{ opacity: 0, x: 8 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
                 onSubmit={handleNotificationsSubmit}
                 className="space-y-8"
               >
@@ -373,12 +384,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                {notificationMsg && (
-                  <div className="p-4 rounded-lg text-sm flex items-center space-x-2.5 bg-accent text-accent-foreground border border-accent">
-                    <Check className="w-5 h-5 shrink-0" />
-                    <span>{notificationMsg.text}</span>
-                  </div>
-                )}
+                <FormAlert msg={notificationMsg} />
 
                 <div className="space-y-4">
                   {[
@@ -425,9 +431,10 @@ export default function SettingsPage() {
                           <motion.span
                             layout
                             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-background shadow-lg ring-0 ${
-                              isChecked ? 'translate-x-5' : 'translate-x-0'
-                            }`}
+                            className="pointer-events-none inline-block h-6 w-6 rounded-full bg-background shadow-lg ring-0"
+                            style={{
+                              x: isChecked ? 20 : 0,
+                            }}
                           />
                         </button>
                       </div>
