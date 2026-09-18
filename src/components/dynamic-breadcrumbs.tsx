@@ -39,10 +39,14 @@ export function DynamicBreadcrumbs() {
               
               <BreadcrumbItem className={!isLast ? "hidden md:block" : ""}>
                 {isLast ? (
-                  <BreadcrumbPage>{formattedTitle}</BreadcrumbPage>
+                  <BreadcrumbPage className="font-semibold text-foreground">
+                    {formattedTitle}
+                  </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link href={href}>{formattedTitle}</Link>
+                    <Link href={href} className="font-medium text-muted-foreground hover:text-foreground transition-colors">
+                      {formattedTitle}
+                    </Link>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>

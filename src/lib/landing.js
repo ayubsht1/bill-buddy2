@@ -1,85 +1,80 @@
-import { Bell, CreditCard, PieChart, Receipt, Users } from "lucide-react";
+import {
+  Bell,
+  ChartPie,
+  CircleDollarSign,
+  MessageCircle,
+  Receipt,
+  Sparkles,
+} from "lucide-react";
 
 export const FEATURES = [
   {
-    title: "Group Expenses",
-    Icon: Users,
+    title: "Personal Expenses",
+    Icon: CircleDollarSign,
     bg: "bg-orange-100",
     color: "text-orange-600",
     description:
-      "Create groups for roommates, trips, or events to keep expenses organized.",
+      "Track your everyday spending, organize expenses, and keep a clear view of where your money goes.",
   },
   {
-    title: "Smart Settlements",
-    Icon: CreditCard,
-    bg: "bg-orange-100",
-    color: "text-orange-600",
+    title: "Shared Expenses",
+    Icon: Receipt,
+    bg: "bg-blue-100",
+    color: "text-blue-600",
     description:
-      "Our algorithm minimises the number of payments when settling up.",
+      "Create groups for roommates, friends, trips, or family and manage shared expenses together.",
   },
   {
-    title: "Expense Analytics",
-    Icon: PieChart,
-    bg: "bg-orange-100",
-    color: "text-orange-600",
+    title: "Messaging",
+    Icon: MessageCircle,
+    bg: "bg-violet-100",
+    color: "text-violet-600",
     description:
-      "Track spending patterns and discover insights about your shared costs.",
+      "Talk with the people you share expenses with and keep conversations connected to your financial activity.",
   },
   {
-    title: "Payment Reminders",
-    Icon: Bell,
+    title: "AI Insights",
+    Icon: Sparkles,
     bg: "bg-amber-100",
     color: "text-amber-600",
     description:
-      "Automated reminders for pending debts and insights on spending patterns.",
+      "Get personalized insights into your spending, expense patterns, and financial activity.",
   },
   {
-    title: "Multiple Split Types",
-    Icon: Receipt,
-    bg: "bg-orange-100",
-    color: "text-orange-600",
+    title: "Expense Analytics",
+    Icon: ChartPie,
+    bg: "bg-emerald-100",
+    color: "text-emerald-600",
     description:
-      "Split equally, by percentage, or by exact amounts to fit any scenario.",
+      "Understand your spending with clear insights into personal and shared expenses.",
   },
   {
-    title: "Real‑time Updates",
-    Icon: () => (
-      /* custom inline icon (no Lucide equivalent) */
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <rect width="18" height="18" x="3" y="3" rx="2" />
-        <path d="M9 14v8M15 14v8M9 2v6M15 2v6" />
-      </svg>
-    ),
-    bg: "bg-orange-100",
-    color: "text-orange-600",
+    title: "Smart Settlements",
+    Icon: Bell,
+    bg: "bg-rose-100",
+    color: "text-rose-600",
     description:
-      "See new expenses and repayments the moment your friends add them.",
+      "Keep track of balances, see who owes what, and stay updated on shared expenses and repayments.",
   },
 ];
+
 export const STEPS = [
   {
     label: "1",
-    title: "Create a Group",
+    title: "Track Your Expenses",
     description:
-      "Start by creating a group for roommates, friends, or family members.",
+      "Record your personal spending and keep your everyday expenses organized in one place.",
   },
   {
     label: "2",
-    title: "Add Expenses",
+    title: "Share & Connect",
     description:
-      "Log bills and split them equally or customize how they are shared.",
+      "Create shared expenses, invite people, split costs, and communicate with your group.",
   },
   {
     label: "3",
-    title: "Settle Up",
+    title: "Understand Your Money",
     description:
-      "Track who owes what and settle payments easily without confusion.",
+      "Use analytics and AI-powered insights to understand your spending and stay on top of your finances.",
   },
 ];

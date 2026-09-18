@@ -10,10 +10,10 @@ import {
   TrendingUp,
   Settings,
   Wallet,
+  PanelLeft,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +23,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 const data = {
@@ -106,11 +107,14 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session, status } = useSession()
+  const { toggleSidebar } = useSidebar()
+  
   const user = {
     name: session?.user?.name || "Guest User",
     email: session?.user?.email || "",
     avatar: session?.user?.image || "",
   }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -137,7 +141,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <NavUser user={user || data.user} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={toggleSidebar}
+              tooltip="Toggle Sidebar"
+              className="cursor-pointer"
+            >
+              <PanelLeft className="size-4" />
+              <span>Toggle Sidebar</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
 
       <SidebarRail />

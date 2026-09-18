@@ -7,99 +7,130 @@ import { Card } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { UserDropdown } from "@/components/user-dropdown";
 import toast, { Toaster } from "react-hot-toast";
-import { useEffect, useState } from "react"; // 👈 Added useState
-import { useSearchParams,useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  useSearchParams,
+  useRouter,
+  usePathname,
+} from "next/navigation";
 import { motion } from "framer-motion";
-import {ModeToggle} from "@/components/mode-toggle";
+import { ModeToggle } from "@/components/mode-toggle";
 
-// Explicit variant maps with 'as const' literal typing
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring" as const, stiffness: 100, damping: 16 } 
-  }
+  hidden: {
+    opacity: 0,
+    y: 24,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 100,
+      damping: 18,
+    },
+  },
 };
 
 const staggerContainer = {
-  hidden: { opacity: 0 },
+  hidden: {
+    opacity: 1,
+  },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.12 }
-  }
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 export default function LandingPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
+
   const isAuthenticated = status === "authenticated";
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  // 👈 State to hold the current active section ID (e.g. "features", "how-it-works")
-  const [activeSection, setActiveSection] = useState<string>("");
+  const [activeSection, setActiveSection] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
 
- useEffect(() => {
+  /*
+   * Authentication messages
+   */
+  useEffect(() => {
     const successParam = searchParams.get("success");
     const errorParam = searchParams.get("error");
 
-    // 1. Check for success
     if (successParam === "google") {
       toast.success("Successfully logged in with Google!");
       cleanUrl();
-    } 
-    // 2. Check for native NextAuth OAuth errors
-    else if (errorParam) {
+    } else if (errorParam) {
       console.error("Auth Error Code:", errorParam);
       toast.error("Authentication failed. Please try again.");
       cleanUrl();
     }
 
-    // Helper to strip the query flags without forcing a hard page reload
     function cleanUrl() {
       const params = new URLSearchParams(searchParams.toString());
+
       params.delete("success");
       params.delete("error");
-      
+
       const query = params.toString();
-      const cleanPath = query ? `${pathname}?${query}` : pathname;
-      
-      router.replace(cleanPath, { scroll: false });
+
+      const cleanPath = query
+        ? `${pathname}?${query}`
+        : pathname;
+
+      router.replace(cleanPath, {
+        scroll: false,
+      });
     }
   }, [searchParams, pathname, router]);
 
-  // 👈 IntersectionObserver setup to dynamically listen to scroll highlights
+  /*
+   * Scroll state + active navigation
+   */
   useEffect(() => {
-    const sections = ["features", "how-it-works", "contact"];
-    
-    const observerOptions = {
-      root: null, // viewport
-      rootMargin: "-20% 0px -60% 0px", // Trigger when section occupies the sweet spot of viewport
-      threshold: 0,
-    };
+    const sections = [
+      "features",
+      "how-it-works",
+      "contact",
+    ];
 
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
-        }
-      });
-    };
-
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: "-20% 0px -60% 0px",
+        threshold: 0,
+      }
+    );
 
     sections.forEach((id) => {
       const element = document.getElementById(id);
-      if (element) observer.observe(element);
+
+      if (element) {
+        observer.observe(element);
+      }
     });
 
-    // Handle being at the very top of the page (Hero area)
     const handleScroll = () => {
+      setIsScrolled(window.scrollY > 30);
+
       if (window.scrollY < 100) {
         setActiveSection("");
       }
     };
+
     window.addEventListener("scroll", handleScroll);
 
     return () => {
@@ -109,331 +140,883 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden scroll-smooth">
-      
-      {/* Navbar */}
-      <header className="fixed top-0 left-0 w-full border-b bg-background/80 backdrop-blur-md z-50">
-        <div className="flex justify-between items-center px-6 md:px-12 py-4">
-          <Link href="/" className="text-2xl font-bold text-primary tracking-tight transition-transform duration-200 hover:scale-105">
-            Bill Buddy
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground scroll-smooth">
+      <Toaster
+        position="top-center"
+        containerStyle={{ top: 72 }}
+      />
+
+      {/* =====================================================
+          NAVBAR
+      ===================================================== */}
+      <header className="fixed left-0 top-0 z-50 w-full px-4 pt-3 md:px-6">
+        <div
+          className={`mx-auto flex h-14 max-w-6xl items-center justify-between rounded-2xl border px-4 transition-all duration-300 md:px-5 ${
+            isScrolled
+              ? "border-border/80 bg-background/90 shadow-lg backdrop-blur-xl"
+              : "border-white/20 bg-black/20 shadow-sm backdrop-blur-md"
+          }`}
+        >
+          {/* Logo */}
+          <Link
+            href="/"
+            className={`text-base font-bold tracking-tight transition-colors ${
+              isScrolled
+                ? "text-foreground"
+                : "text-white"
+            }`}
+          >
+            Bill <span className="text-primary">Buddy</span>
           </Link>
 
-          {/* Nav Links with Active State Highlighting */}
-          <nav className="hidden md:flex gap-1 text-sm font-medium items-center relative">
+          {/* Desktop navigation */}
+          <nav className="hidden items-center gap-1 md:flex">
             {isAuthenticated && (
-              <Link 
-                href="/dashboard" 
-                className={`relative px-3 py-2 rounded-md transition-colors duration-200 ${
-                  pathname === "/dashboard" ? "text-primary font-semibold" : "hover:text-primary text-muted-foreground"
+              <Link
+                href="/dashboard"
+                className={`rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                  pathname === "/dashboard"
+                    ? "text-primary"
+                    : isScrolled
+                      ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 Dashboard
-                {pathname === "/dashboard" && (
-                  <motion.div 
-                    layoutId="activeNavPill"
-                    className="absolute inset-0 bg-primary/10 rounded-md -z-10"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
               </Link>
             )}
 
-            {/* Features Link */}
-            <Link 
-              href="#features" 
-              className={`relative px-3 py-2 rounded-md transition-colors duration-200 ${
-                activeSection === "features" ? "text-primary font-semibold" : "hover:text-primary text-muted-foreground"
+            <Link
+              href="#features"
+              className={`rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                activeSection === "features"
+                  ? "text-primary"
+                  : isScrolled
+                    ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               Features
-              {activeSection === "features" && (
-                <motion.div 
-                  layoutId="activeNavPill"
-                  className="absolute inset-0 bg-primary/10 rounded-md -z-10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
             </Link>
 
-            {/* How It Works Link */}
-            <Link 
-              href="#how-it-works" 
-              className={`relative px-3 py-2 rounded-md transition-colors duration-200 ${
-                activeSection === "how-it-works" ? "text-primary font-semibold" : "hover:text-primary text-muted-foreground"
+            <Link
+              href="#how-it-works"
+              className={`rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                activeSection === "how-it-works"
+                  ? "text-primary"
+                  : isScrolled
+                    ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               How It Works
-              {activeSection === "how-it-works" && (
-                <motion.div 
-                  layoutId="activeNavPill"
-                  className="absolute inset-0 bg-primary/10 rounded-md -z-10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
             </Link>
 
-            {/* Contact Link */}
-            <Link 
-              href="#contact" 
-              className={`relative px-3 py-2 rounded-md transition-colors duration-200 ${
-                activeSection === "contact" ? "text-primary font-semibold" : "hover:text-primary text-muted-foreground"
+            <Link
+              href="#contact"
+              className={`rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+                activeSection === "contact"
+                  ? "text-primary"
+                  : isScrolled
+                    ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               Contact
-              {activeSection === "contact" && (
-                <motion.div 
-                  layoutId="activeNavPill"
-                  className="absolute inset-0 bg-primary/10 rounded-md -z-10"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
             </Link>
           </nav>
 
-         {/* Action Buttons & User Profiles */}
-          <div className="flex gap-2 items-center">
-            
-            {/* 🌟 Put the Mode Toggle right here */}
+          {/* Actions */}
+          <div className="flex items-center gap-2">
             <ModeToggle />
 
             {status === "loading" ? (
-              <div className="h-8 w-24" />
-            ) : status === "authenticated" ? (
+              <div className="h-9 w-20" />
+            ) : isAuthenticated ? (
               <UserDropdown />
             ) : (
               <>
-                <Link href="/auth/login">
-                  <Button variant="outline" className="transition-transform active:scale-95">Login</Button>
+                <Link
+                  href="/auth/login"
+                  className="hidden sm:block"
+                >
+                  <Button
+                    variant="ghost"
+                    className={`h-9 px-3 text-[13px] ${
+                      isScrolled
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    Log in
+                  </Button>
                 </Link>
+
                 <Link href="/auth/signup">
-                  <Button className="transition-transform active:scale-95">Sign Up</Button>
+                  <Button className="h-9 rounded-lg px-4 text-[13px] shadow-sm">
+                    Get Started
+                  </Button>
                 </Link>
               </>
             )}
           </div>
         </div>
       </header>
-      
-      <Toaster position="top-center" containerStyle={{ top: 72 }} />
 
-      {/* Hero Section */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
       <section
-        className="relative flex-1 flex items-center justify-center text-center px-6 md:px-12 py-40 bg-cover bg-center min-h-[85vh]"
-        style={{ backgroundImage: "url('/hero2.jpg')" }}
+        className="relative flex min-h-[760px] items-center overflow-hidden bg-cover bg-center px-6 pt-20 md:min-h-[800px] md:px-10"
+        style={{
+          backgroundImage: "url('/hero2.jpg')",
+        }}
       >
-        <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px]"></div>
+        {/* Main overlay */}
+        <div className="absolute inset-0 bg-black/55" />
 
-        <motion.div 
-          className="relative z-10 max-w-3xl"
+        {/* Soft color glow */}
+        <div className="absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
+
+        {/* Bottom fade */}
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/40 to-transparent" />
+
+        <motion.div
+          className="relative z-10 mx-auto w-full max-w-6xl"
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
         >
-          <motion.h1 
-            className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-white"
-            variants={fadeInUp}
-          >
-            Simplify Your Bills with{" "}
-            <span className="text-primary block sm:inline">Bill Buddy</span>
-          </motion.h1>
+          <div className="max-w-3xl">
+            <motion.div variants={fadeInUp}>
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm">
+                Personal and shared expenses, in one place
+              </span>
+            </motion.div>
 
-          <motion.p 
-            className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto mb-8/relaxed"
-            variants={fadeInUp}
-          >
-            Split expenses, track payments, and stay stress-free. Perfect for
-            roommates, friends, and families who share costs.
-          </motion.p>
+            <motion.h1
+              className="mt-7 max-w-3xl text-5xl font-bold leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl md:text-7xl"
+              variants={fadeInUp}
+            >
+              Manage your money.
+              <span className="block text-primary">
+                Stay connected.
+              </span>
+            </motion.h1>
 
-          <motion.div 
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            variants={fadeInUp}
-          >
-            {status === "loading" ? (
-              <div className="h-[48px] w-[160px]" />
-            ) : status === "authenticated" ? (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+            <motion.p
+              className="mt-6 max-w-2xl text-base leading-7 text-white/75 md:text-lg"
+              variants={fadeInUp}
+            >
+              Bill Buddy brings personal expense tracking,
+              shared expenses, messaging, analytics, and
+              AI-powered insights together in one simple place.
+            </motion.p>
+
+            <motion.div
+              className="mt-8 flex flex-col gap-3 sm:flex-row"
+              variants={fadeInUp}
+            >
+              {status === "loading" ? (
+                <div className="h-11 w-40 rounded-lg bg-white/10" />
+              ) : isAuthenticated ? (
                 <Link href="/dashboard">
-                  <Button size="lg" className="px-8 py-3 cursor-pointer text-white">
-                    Get Started
+                  <Button
+                    size="lg"
+                    className="h-11 rounded-lg px-6 text-sm shadow-lg"
+                  >
+                    Open Dashboard
                   </Button>
                 </Link>
-              </motion.div>
-            ) : (
-              <>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+              ) : (
+                <>
                   <Link href="/auth/signup">
-                    <Button size="lg" className="px-8 py-3 cursor-pointer text-white">
+                    <Button
+                      size="lg"
+                      className="h-11 rounded-lg px-6 text-sm shadow-lg"
+                    >
                       Get Started
                     </Button>
                   </Link>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                  <Link href="/auth/login">
+
+                  <Link href="#how-it-works">
                     <Button
                       size="lg"
                       variant="outline"
-                      className="px-8 py-3 bg-white/10 text-white hover:bg-white/20 hover:text-primary border-white cursor-pointer"
+                      className="h-11 rounded-lg border-white/25 bg-white/10 px-6 text-sm text-white backdrop-blur-md hover:bg-white/20 hover:text-white"
                     >
-                      Login
+                      See how it works
                     </Button>
                   </Link>
+                </>
+              )}
+            </motion.div>
+
+            {/* Trust indicators */}
+            <motion.div
+              className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-white/55"
+              variants={fadeInUp}
+            >
+              <span>Track your spending</span>
+
+              <span className="h-1 w-1 rounded-full bg-white/30" />
+
+              <span>Share expenses</span>
+
+              <span className="h-1 w-1 rounded-full bg-white/30" />
+
+              <span>AI-powered insights</span>
+            </motion.div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* =====================================================
+          INTRO
+      ===================================================== */}
+      {/* <section className="px-6 py-24 md:px-10 md:py-32">
+        <motion.div
+          className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[1.1fr_0.9fr] md:items-center"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{
+            once: true,
+            margin: "-100px",
+          }}
+          variants={staggerContainer}
+        >
+          <div>
+            <motion.p
+              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+              variants={fadeInUp}
+            >
+              One place for your everyday finances
+            </motion.p>
+
+            <motion.h2
+              className="max-w-2xl text-3xl font-bold leading-[1.12] tracking-tight sm:text-4xl md:text-5xl"
+              variants={fadeInUp}
+            >
+              Your expenses, conversations,
+              and insights shouldn&apos;t be scattered.
+            </motion.h2>
+          </div>
+
+          <motion.div
+            className="space-y-5 text-muted-foreground"
+            variants={fadeInUp}
+          >
+            <p className="text-base leading-7 md:text-lg">
+              Track what you spend, manage expenses with friends
+              and family, and keep your financial activity
+              organized in one place.
+            </p>
+
+            <p className="text-sm leading-7">
+              Bill Buddy combines personal expense management,
+              shared expenses, messaging, analytics, and
+              AI-powered insights so you can better understand
+              and manage your money.
+            </p>
+          </motion.div>
+        </motion.div>
+      </section> */}
+
+      {/* =====================================================
+          FEATURES
+      ===================================================== */}
+      <section
+        id="features"
+        className="border-y border-border/60 bg-muted/30 px-6 py-24 md:px-10 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            className="max-w-2xl"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              margin: "-100px",
+            }}
+            variants={staggerContainer}
+          >
+            <motion.p
+              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+              variants={fadeInUp}
+            >
+              Everything in one place
+            </motion.p>
+
+            <motion.h2
+              className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+              variants={fadeInUp}
+            >
+              More than a bill splitter.
+            </motion.h2>
+
+            <motion.p
+              className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base"
+              variants={fadeInUp}
+            >
+              Track your personal spending, manage shared
+              expenses, stay connected, and get intelligent
+              insights into your financial activity.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              margin: "-100px",
+            }}
+          >
+            {FEATURES.map(
+              ({
+                title,
+                Icon,
+                bg,
+                color,
+                description,
+              }) => (
+                <motion.div
+                  key={title}
+                  variants={fadeInUp}
+                  whileHover={{
+                    y: -5,
+                    transition: {
+                      duration: 0.2,
+                    },
+                  }}
+                >
+                  <Card className="group h-full rounded-2xl border-border/70 bg-card p-6 shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md">
+                    <div
+                      className={`mb-6 inline-flex rounded-xl p-3 ${bg}`}
+                    >
+                      <Icon
+                        className={`h-5 w-5 ${color}`}
+                      />
+                    </div>
+
+                    <h3 className="text-base font-semibold tracking-tight">
+                      {title}
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {description}
+                    </p>
+                  </Card>
                 </motion.div>
-              </>
+              )
             )}
           </motion.div>
-        </motion.div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="px-6 md:px-12 py-24 bg-muted/30">
-        <div className="text-center mb-16">
-          <div className="inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary mb-4">
-            Features
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Why Choose Bill Buddy?</h2>
-          <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-            Everything you need to manage your shared expenses smoothly.
-          </p>
         </div>
-
-        <motion.div 
-          className="mx-auto mt-12 grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-3"
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          {FEATURES.map(({ title, Icon, bg, color, description }) => (
-            <motion.div 
-              key={title} 
-              variants={fadeInUp}
-              whileHover={{ y: -8, transition: { duration: 0.2 } }}
-            >
-              <Card className="flex flex-col items-center space-y-4 p-6 text-center h-full transition-shadow duration-300 hover:shadow-md border border-muted">
-                <div className={`rounded-full p-3 transition-transform duration-300 hover:rotate-12 ${bg}`}>
-                  <Icon className={`h-6 w-6 ${color}`} />
-                </div>
-                <h3 className="text-xl font-bold tracking-tight">{title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
       </section>
 
-      {/* How it works Section */}
-      <section id="how-it-works" className="px-6 md:px-12 py-24 bg-card">
-        <div className="text-center">
-          <div className="inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
-            How It Works
-          </div>
-          <h2 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
-            Splitting expenses has never been easier
-          </h2>
-          <p className="mx-auto mt-3 max-w-[700px] text-muted-foreground md:text-lg">
-            Manage shared expenses in three simple steps.
-          </p>
-        </div>
-
-        <motion.div 
-          className="mx-auto mt-16 grid max-w-5xl gap-8 md:grid-cols-3"
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          {STEPS.map(({ label, title, description }) => (
-            <motion.div 
-              key={label} 
-              className="flex flex-col items-center space-y-4 text-center group"
-              variants={fadeInUp}
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground shadow-sm">
-                {label}
-              </div>
-              <h3 className="text-xl font-bold tracking-tight">{title}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="px-6 md:px-12 py-24 bg-muted/20">
-        <div className="mx-auto max-w-6xl grid gap-12 md:grid-cols-2 items-center">
-          <div>
-            <div className="inline-block rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
-              Contact
-            </div>
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
-              Let’s talk about your shared expenses
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-md leading-relaxed">
-              Have questions, suggestions, or feedback? Reach out and we’ll get
-              back to you as soon as possible.
-            </p>
-            <div className="mt-8 space-y-3 text-sm text-muted-foreground">
-              <p className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">Email:</span> billbuddy789@gmail.com
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">Location:</span> Remote / Global
-              </p>
-            </div>
-          </div>
-
-          {/* Form Card Animation */}
+      {/* =====================================================
+          HOW IT WORKS
+      ===================================================== */}
+      <section
+        id="how-it-works"
+        className="px-6 py-24 md:px-10 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", duration: 0.6 }}
+            className="max-w-2xl"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              margin: "-100px",
+            }}
+            variants={staggerContainer}
           >
-            <Card className="p-8 shadow-sm border border-muted bg-card">
-              <form
-                className="grid gap-6"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  toast.success("Message submitted successfully!");
-                }}
-              >
-                <div className="grid md:grid-cols-2 gap-6">
-                  <input
-                    type="text"
-                    placeholder="Your Name"
-                    required
-                    className="w-full rounded-lg border px-4 py-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow duration-200"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Your Email"
-                    required
-                    className="w-full rounded-lg border px-4 py-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow duration-200"
-                  />
-                </div>
+            <motion.p
+              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+              variants={fadeInUp}
+            >
+              Simple by design
+            </motion.p>
 
-                <textarea
-                  placeholder="Your Message"
-                  rows={4}
-                  required
-                  className="w-full rounded-lg border px-4 py-3 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow duration-200 resize-none"
-                />
+            <motion.h2
+              className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+              variants={fadeInUp}
+            >
+              From everyday expenses
+              to smarter decisions.
+            </motion.h2>
 
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button type="submit" className="w-full text-white cursor-pointer shadow-md">
-                    Send Message
-                  </Button>
+            <motion.p
+              className="mt-4 text-sm leading-7 text-muted-foreground md:text-base"
+              variants={fadeInUp}
+            >
+              Track your spending, share expenses, stay
+              connected, and let Bill Buddy help you understand
+              your financial activity.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            className="relative mt-14 grid gap-5 md:grid-cols-3"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              margin: "-100px",
+            }}
+          >
+            {STEPS.map(
+              ({
+                label,
+                title,
+                description,
+              }) => (
+                <motion.div
+                  key={label}
+                  variants={fadeInUp}
+                  className="relative"
+                >
+                  <Card className="h-full rounded-2xl border-border/70 bg-card p-6 shadow-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      {label}
+                    </div>
+
+                    <h3 className="mt-6 text-base font-semibold tracking-tight">
+                      {title}
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {description}
+                    </p>
+                  </Card>
                 </motion.div>
-              </form>
-            </Card>
+              )
+            )}
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground bg-card">
-        © {new Date().getFullYear()} Bill Buddy. All rights reserved.
+      {/* =====================================================
+          USE CASES
+      ===================================================== */}
+      <section className="px-6 py-24 md:px-10 md:py-32">
+        <div className="mx-auto max-w-6xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              margin: "-100px",
+            }}
+            variants={staggerContainer}
+          >
+            <motion.div
+              className="flex flex-col justify-between gap-6 md:flex-row md:items-end"
+              variants={fadeInUp}
+            >
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  Built around real life
+                </p>
+
+                <h2 className="max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                  One app for the money
+                  you manage every day.
+                </h2>
+              </div>
+
+              <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+                Whether you&apos;re tracking your own spending,
+                sharing expenses, or talking with the people
+                involved, Bill Buddy keeps everything connected.
+              </p>
+            </motion.div>
+
+            <div className="mt-12 grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  number: "01",
+                  title: "Personal",
+                  description:
+                    "Track everyday spending, subscriptions, shopping, food, transport, and more.",
+                },
+                {
+                  number: "02",
+                  title: "Shared",
+                  description:
+                    "Manage rent, dinners, trips, groceries, and other expenses with the people you share them with.",
+                },
+                {
+                  number: "03",
+                  title: "Connected",
+                  description:
+                    "Message people, discuss expenses, and keep financial conversations connected to your activity.",
+                },
+              ].map(
+                ({
+                  number,
+                  title,
+                  description,
+                }) => (
+                  <motion.div
+                    key={number}
+                    variants={fadeInUp}
+                    whileHover={{
+                      y: -5,
+                      transition: {
+                        duration: 0.2,
+                      },
+                    }}
+                  >
+                    <Card className="group h-full rounded-2xl border-border/70 bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-primary">
+                          {number}
+                        </span>
+
+                        <span className="h-2 w-2 rounded-full bg-primary/50 transition-transform group-hover:scale-150" />
+                      </div>
+
+                      <h3 className="mt-12 text-lg font-semibold">
+                        {title}
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {description}
+                      </p>
+                    </Card>
+                  </motion.div>
+                )
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          CTA
+      ===================================================== */}
+      <section className="px-6 pb-24 md:px-10 md:pb-32">
+        <motion.div
+          className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl border border-border/70 bg-muted/40 px-7 py-14 md:px-16 md:py-16"
+          initial={{
+            opacity: 0,
+            y: 24,
+          }}
+          whileInView={{
+            opacity: 1,
+            y: 0,
+          }}
+          viewport={{
+            once: true,
+          }}
+          transition={{
+            duration: 0.6,
+          }}
+        >
+          {/* Decorative background */}
+          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
+
+          <div className="relative z-10 mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              Get started
+            </p>
+
+            <h2 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+              Ready to understand
+              your money better?
+            </h2>
+
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-muted-foreground md:text-base">
+              Start tracking your expenses, connect with the
+              people you share money with, and get intelligent
+              insights into your spending.
+            </p>
+
+            <div className="mt-7">
+              {isAuthenticated ? (
+                <Link href="/dashboard">
+                  <Button
+                    size="lg"
+                    className="h-11 rounded-lg px-7 text-sm shadow-sm"
+                  >
+                    Go to Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/auth/signup">
+                  <Button
+                    size="lg"
+                    className="h-11 rounded-lg px-7 text-sm shadow-sm"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* =====================================================
+          CONTACT
+      ===================================================== */}
+      <section
+        id="contact"
+        className="border-t border-border/60 bg-muted/20 px-6 py-24 md:px-10 md:py-32"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
+            {/* Contact information */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{
+                once: true,
+                margin: "-100px",
+              }}
+              variants={staggerContainer}
+              className="lg:pt-4"
+            >
+              <motion.p
+                className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+                variants={fadeInUp}
+              >
+                Contact
+              </motion.p>
+
+              <motion.h2
+                className="max-w-md text-3xl font-bold leading-[1.12] tracking-tight sm:text-4xl"
+                variants={fadeInUp}
+              >
+                Have questions about
+                <span className="block text-muted-foreground">
+                  Bill Buddy?
+                </span>
+              </motion.h2>
+
+              <motion.p
+                className="mt-5 max-w-md text-sm leading-7 text-muted-foreground md:text-base"
+                variants={fadeInUp}
+              >
+                Have a question, suggestion, or need help with
+                Bill Buddy? Send us a message and we&apos;ll get
+                back to you.
+              </motion.p>
+
+              <motion.div
+                className="mt-8 space-y-4"
+                variants={fadeInUp}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
+                    <span className="text-sm text-muted-foreground">
+                      @
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Email
+                    </p>
+
+                    <p className="mt-1 text-sm font-medium">
+                      billbuddy789@gmail.com
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
+                    <span className="text-sm text-muted-foreground">
+                      ↗
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Location
+                    </p>
+
+                    <p className="mt-1 text-sm font-medium">
+                      Remote / Global
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Contact form */}
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              whileInView={{
+                opacity: 1,
+                y: 0,
+              }}
+              viewport={{
+                once: true,
+              }}
+              transition={{
+                duration: 0.6,
+              }}
+            >
+              <Card className="rounded-2xl border-border/70 bg-card p-6 shadow-sm md:p-8">
+                <div className="mb-7">
+                  <h3 className="text-lg font-semibold tracking-tight">
+                    Send us a message
+                  </h3>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Fill out the form below and we&apos;ll get
+                    back to you.
+                  </p>
+                </div>
+
+                <form
+                  className="grid gap-5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+
+                    toast.success(
+                      "Message submitted successfully!"
+                    );
+                  }}
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <label
+                        htmlFor="contact-name"
+                        className="text-sm font-medium"
+                      >
+                        Name
+                      </label>
+
+                      <input
+                        id="contact-name"
+                        type="text"
+                        placeholder="Your name"
+                        required
+                        className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label
+                        htmlFor="contact-email"
+                        className="text-sm font-medium"
+                      >
+                        Email
+                      </label>
+
+                      <input
+                        id="contact-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        required
+                        className="h-11 w-full rounded-lg border border-border bg-background px-3.5 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor="contact-message"
+                      className="text-sm font-medium"
+                    >
+                      Message
+                    </label>
+
+                    <textarea
+                      id="contact-message"
+                      placeholder="How can we help?"
+                      rows={6}
+                      required
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3.5 py-3 text-sm leading-6 outline-none transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="max-w-sm text-xs leading-5 text-muted-foreground">
+                      We&apos;ll only use your information to
+                      respond to your message.
+                    </p>
+
+                    <motion.div
+                      whileHover={{
+                        scale: 1.01,
+                      }}
+                      whileTap={{
+                        scale: 0.98,
+                      }}
+                    >
+                      <Button
+                        type="submit"
+                        className="h-10 w-full rounded-lg px-6 text-sm font-medium sm:w-auto"
+                      >
+                        Send Message
+                      </Button>
+                    </motion.div>
+                  </div>
+                </form>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
+      <footer className="border-t border-border/60 bg-background px-6 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <Link
+              href="/"
+              className="text-sm font-semibold text-foreground"
+            >
+              Bill <span className="text-primary">Buddy</span>
+            </Link>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Personal expenses. Shared money. Smarter insights.
+            </p>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Bill Buddy. All rights
+            reserved.
+          </p>
+
+          <div className="flex gap-5 text-xs text-muted-foreground">
+            <Link
+              href="#features"
+              className="transition-colors hover:text-foreground"
+            >
+              Features
+            </Link>
+
+            <Link
+              href="#how-it-works"
+              className="transition-colors hover:text-foreground"
+            >
+              How It Works
+            </Link>
+
+            <Link
+              href="#contact"
+              className="transition-colors hover:text-foreground"
+            >
+              Contact
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
