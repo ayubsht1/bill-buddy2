@@ -1,380 +1,511 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { useMemo, useState } from "react";
 import {
-  Plus,
-  Search,
+  ArrowDownUp,
+  CalendarDays,
+  Car,
+  ChevronDown,
+  Coffee,
   Filter,
-  Edit2,
-  Trash2,
-  ArrowUpRight,
-  ArrowDownLeft,
+  Home,
+  MoreHorizontal,
+  Plus,
+  Receipt,
+  Search,
+  ShoppingBag,
+  Utensils,
+  Users,
+  Wallet,
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AddEditExpenseDialog } from "@/components/expenses/add-edit-expense-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-import {
-  AddEditTransactionModal,
-  PersonalExpense,
-  TransactionType,
-  CATEGORY_OPTIONS,
-} from "@/features/expenses/components/add-edit-transaction-modal";
+type ExpenseType = "Personal" | "Group";
 
-const INITIAL_DUMMY_DATA: PersonalExpense[] = [
+type Expense = {
+  id: number;
+  title: string;
+  amount: number;
+  category: string;
+  type: ExpenseType;
+  group?: string;
+  paidBy: string;
+  date: string;
+  icon: typeof Receipt;
+  notes?: string;
+};
+
+const expenses: Expense[] = [
   {
     id: 1,
-    title: "Client Project Payment",
-    amount: "1200.00",
-    transaction_type: "INCOME",
-    category: "FREELANCE",
-    date: "2026-08-28",
+    title: "Dinner",
+    amount: 2500,
+    category: "Food",
+    type: "Group",
+    group: "Pokhara Trip",
+    paidBy: "You",
+    date: "Sep 18, 2026",
+    icon: Utensils,
   },
   {
     id: 2,
-    title: "Grocery Shopping",
-    amount: "84.50",
-    transaction_type: "EXPENSE",
-    category: "FOOD",
-    date: "2026-08-27",
+    title: "Taxi",
+    amount: 800,
+    category: "Transport",
+    type: "Personal",
+    paidBy: "You",
+    date: "Sep 17, 2026",
+    icon: Car,
   },
   {
     id: 3,
-    title: "Monthly Salary",
-    amount: "3500.00",
-    transaction_type: "INCOME",
-    category: "SALARY",
-    date: "2026-08-25",
+    title: "Hotel",
+    amount: 6000,
+    category: "Travel",
+    type: "Group",
+    group: "Pokhara Trip",
+    paidBy: "Suman",
+    date: "Sep 16, 2026",
+    icon: Home,
   },
   {
     id: 4,
-    title: "Internet & Utility Bill",
-    amount: "65.00",
-    transaction_type: "EXPENSE",
-    category: "UTILITIES",
-    date: "2026-08-20",
+    title: "Coffee",
+    amount: 450,
+    category: "Food",
+    type: "Personal",
+    paidBy: "You",
+    date: "Sep 15, 2026",
+    icon: Coffee,
+  },
+  {
+    id: 5,
+    title: "Groceries",
+    amount: 3200,
+    category: "Shopping",
+    type: "Personal",
+    paidBy: "You",
+    date: "Sep 14, 2026",
+    icon: ShoppingBag,
   },
 ];
 
-// Explicitly typed animation variants to resolve TypeScript error
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
+export default function ExpensesPage() {
+  const [activeFilter, setActiveFilter] = useState<
+    "All" | "Personal" | "Groups"
+  >("All");
 
-const itemFadeUp: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
-};
+  const [search, setSearch] = useState("");
 
-const listItemVariants: Variants = {
-  hidden: { opacity: 0, height: 0, y: -10, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    height: "auto",
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.25, ease: "easeOut" },
-  },
-  exit: {
-    opacity: 0,
-    height: 0,
-    scale: 0.95,
-    transition: { duration: 0.2, ease: "easeIn" },
-  },
-};
+  const [expenseDialogOpen, setExpenseDialogOpen] =
+    useState(false);
 
-export default function PersonalMoneyTracker() {
-  const [transactions, setTransactions] = useState<PersonalExpense[]>(INITIAL_DUMMY_DATA);
-  const [typeFilter, setTypeFilter] = useState<string>("ALL");
-  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedExpense, setSelectedExpense] =
+    useState<Expense | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingRecord, setEditingRecord] = useState<PersonalExpense | null>(null);
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const matchesFilter =
+        activeFilter === "All" ||
+        (activeFilter === "Personal" &&
+          expense.type === "Personal") ||
+        (activeFilter === "Groups" &&
+          expense.type === "Group");
 
-  const handleOpenCreateModal = () => {
-    setEditingRecord(null);
-    setIsModalOpen(true);
+      const matchesSearch = expense.title
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [activeFilter, search]);
+
+  const handleAddExpense = () => {
+    setSelectedExpense(null);
+    setExpenseDialogOpen(true);
   };
 
-  const handleOpenEditModal = (item: PersonalExpense) => {
-    setEditingRecord(item);
-    setIsModalOpen(true);
+  const handleEditExpense = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setExpenseDialogOpen(true);
   };
 
-  const handleModalSubmit = (payload: {
+  const handleExpenseSubmit = (data: {
+    id?: number;
     title: string;
     amount: number;
-    transaction_type: TransactionType;
     category: string;
+    type: ExpenseType;
+    group?: string;
+    paidBy: string;
+    date: string;
+    notes?: string;
   }) => {
-    if (editingRecord) {
-      setTransactions((prev) =>
-        prev.map((t) =>
-          t.id === editingRecord.id
-            ? {
-                ...t,
-                ...payload,
-                amount: payload.amount.toString(),
-              }
-            : t
-        )
-      );
+    if (selectedExpense) {
+      console.log("Update expense:", data);
     } else {
-      const newEntry: PersonalExpense = {
-        id: Date.now(),
-        title: payload.title,
-        amount: payload.amount.toString(),
-        transaction_type: payload.transaction_type,
-        category: payload.category,
-        date: new Date().toISOString().split("T")[0],
-      };
-      setTransactions((prev) => [newEntry, ...prev]);
+      console.log("Create expense:", data);
     }
+
+    // TODO: Connect this to your Django API.
   };
-
-  const handleDelete = (id: number) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesType = typeFilter === "ALL" || t.transaction_type === typeFilter;
-      const matchesCategory = categoryFilter === "ALL" || t.category === categoryFilter;
-
-      return matchesSearch && matchesType && matchesCategory;
-    });
-  }, [transactions, searchQuery, typeFilter, categoryFilter]);
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="w-full max-w-7xl mx-auto p-6 md:p-10 space-y-8 text-foreground"
-    >
-      {/* Header Section */}
-      <motion.div
-        variants={itemFadeUp}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border"
-      >
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Money Tracker</h1>
-          <p className="text-base text-muted-foreground mt-1">
-            Manage your personal income and expenses (Demo mode).
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Expenses
+          </h1>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track your personal and shared expenses.
           </p>
         </div>
-        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button
-            onClick={handleOpenCreateModal}
-            size="lg"
-            className="shrink-0 gap-2 text-base px-5 py-6 shadow-md transition-shadow hover:shadow-lg"
-          >
-            <Plus className="h-5 w-5" />
-            Add Transaction
-          </Button>
-        </motion.div>
-      </motion.div>
 
-      {/* Filter Section */}
-      <motion.div variants={itemFadeUp}>
-        <Card className="p-5 bg-card border-border shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-            <div className="sm:col-span-5 relative">
-              <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search by title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 h-12 text-base transition-all focus:ring-2"
-              />
+        <Button
+          className="gap-2"
+          onClick={handleAddExpense}
+        >
+          <Plus className="size-4" />
+          Add Expense
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SummaryCard
+          title="Total Spent"
+          value="Rs. 24,500"
+          description="This month"
+          icon={Wallet}
+        />
+
+        <SummaryCard
+          title="You Paid"
+          value="Rs. 15,200"
+          description="Across all expenses"
+          icon={Receipt}
+        />
+
+        <SummaryCard
+          title="You Owe"
+          value="Rs. 2,300"
+          description="To 3 people"
+          icon={ArrowDownUp}
+        />
+
+        <SummaryCard
+          title="You Are Owed"
+          value="Rs. 4,800"
+          description="By 4 people"
+          icon={Users}
+        />
+      </div>
+
+      {/* Expense List */}
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">
+                  Recent Expenses
+                </CardTitle>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your latest personal and group expenses.
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden gap-2 sm:flex"
+              >
+                <Filter className="size-4" />
+                Filters
+              </Button>
             </div>
 
-            <div className="sm:col-span-3">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full h-12 text-base">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Types</SelectItem>
-                  <SelectItem value="INCOME">Income Only</SelectItem>
-                  <SelectItem value="EXPENSE">Expense Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Search + Filters */}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
-            <div className="sm:col-span-3">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full h-12 text-base">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Categories</SelectItem>
-                  {CATEGORY_OPTIONS.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <Input
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  placeholder="Search expenses..."
+                  className="pl-9"
+                />
+              </div>
 
-            <div className="sm:col-span-1 flex justify-end">
-              <motion.div whileHover={{ rotate: 15 }} whileTap={{ scale: 0.9 }}>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    setTypeFilter("ALL");
-                    setCategoryFilter("ALL");
-                    setSearchQuery("");
-                  }}
-                  className="h-12 w-12"
-                  title="Reset Filters"
-                >
-                  <Filter className="h-5 w-5 text-muted-foreground" />
-                </Button>
-              </motion.div>
+              <div className="flex gap-2">
+                {(["All", "Personal", "Groups"] as const).map(
+                  (filter) => (
+                    <Button
+                      key={filter}
+                      size="sm"
+                      variant={
+                        activeFilter === filter
+                          ? "default"
+                          : "outline"
+                      }
+                      onClick={() =>
+                        setActiveFilter(filter)
+                      }
+                    >
+                      {filter}
+                    </Button>
+                  )
+                )}
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <CalendarDays className="size-4" />
+
+                      <span className="hidden sm:inline">
+                        This month
+                      </span>
+
+                      <ChevronDown className="size-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>
+                      Today
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem>
+                      This week
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem>
+                      This month
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem>
+                      Last month
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem>
+                      This year
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
-        </Card>
-      </motion.div>
+        </CardHeader>
 
-      {/* Transaction List Card */}
-      <motion.div variants={itemFadeUp}>
-        <Card className="border-border shadow-xs">
-          <CardHeader className="p-6 pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold">Logged Entries</CardTitle>
-              <motion.span
-                key={filteredTransactions.length}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-sm font-medium text-muted-foreground"
-              >
-                {filteredTransactions.length} items
-              </motion.span>
+        <CardContent className="p-0">
+          {filteredExpenses.length === 0 ? (
+            <EmptyState
+              onAddExpense={handleAddExpense}
+            />
+          ) : (
+            <div className="divide-y">
+              {filteredExpenses.map((expense) => (
+                <ExpenseRow
+                  key={expense.id}
+                  expense={expense}
+                  onEdit={handleEditExpense}
+                />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6 pt-0">
-            {filteredTransactions.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="py-16 text-center text-muted-foreground text-base"
-              >
-                No transactions match your current filters.
-              </motion.div>
-            ) : (
-              <div className="divide-y divide-border overflow-hidden">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {filteredTransactions.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      variants={listItemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      className="flex items-center justify-between p-4 sm:p-5 hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
-                          className={`p-3 rounded-full shrink-0 transition-colors ${
-                            item.transaction_type === "INCOME"
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : "bg-destructive/10 text-destructive"
-                          }`}
-                        >
-                          {item.transaction_type === "INCOME" ? (
-                            <ArrowDownLeft className="h-5 w-5" />
-                          ) : (
-                            <ArrowUpRight className="h-5 w-5" />
-                          )}
-                        </motion.div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-base truncate text-foreground">
-                            {item.title}
-                          </p>
-                          <div className="flex items-center gap-2.5 mt-1">
-                            <Badge variant="outline" className="text-xs uppercase py-0.5 px-2 font-medium">
-                              {item.category}
-                            </Badge>
-                            {item.date && (
-                              <span className="text-sm text-muted-foreground">{item.date}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+          )}
+        </CardContent>
+      </Card>
 
-                      <div className="flex items-center gap-4 shrink-0">
-                        <span
-                          className={`font-mono text-base font-bold ${
-                            item.transaction_type === "INCOME"
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-foreground"
-                          }`}
-                        >
-                          {item.transaction_type === "INCOME" ? "+" : "-"}
-                          ${Number(item.amount).toFixed(2)}
-                        </span>
-
-                        <div className="flex items-center gap-1.5">
-                          <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenEditModal(item)}
-                              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                          </motion.div>
-                          <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(item.id)}
-                              className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </motion.div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <AddEditTransactionModal
-        isOpen={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        editingRecord={editingRecord}
-        onSubmit={handleModalSubmit}
+      {/* Add / Edit Expense Dialog */}
+      <AddEditExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        expense={selectedExpense}
+        onSubmit={handleExpenseSubmit}
       />
-    </motion.div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  icon: typeof Wallet;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-start justify-between p-5">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {title}
+          </p>
+
+          <p className="mt-2 text-2xl font-semibold tracking-tight">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            {description}
+          </p>
+        </div>
+
+        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="size-4" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExpenseRow({
+  expense,
+  onEdit,
+}: {
+  expense: Expense;
+  onEdit: (expense: Expense) => void;
+}) {
+  const Icon = expense.icon;
+
+  return (
+    <div className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/40">
+      {/* Icon */}
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+        <Icon className="size-4 text-muted-foreground" />
+      </div>
+
+      {/* Expense Info */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium">
+            {expense.title}
+          </p>
+
+          <Badge
+            variant="secondary"
+            className="hidden shrink-0 text-[10px] sm:inline-flex"
+          >
+            {expense.type}
+          </Badge>
+        </div>
+
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span>{expense.category}</span>
+
+          <span>•</span>
+
+          <span>{expense.date}</span>
+
+          {expense.group && (
+            <>
+              <span>•</span>
+              <span>{expense.group}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Amount */}
+      <div className="text-right">
+        <p className="text-sm font-semibold">
+          Rs. {expense.amount.toLocaleString()}
+        </p>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          Paid by {expense.paidBy}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem>
+            View details
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => onEdit(expense)}
+          >
+            Edit expense
+          </DropdownMenuItem>
+
+          <DropdownMenuItem className="text-destructive">
+            Delete expense
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function EmptyState({
+  onAddExpense,
+}: {
+  onAddExpense: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+        <Receipt className="size-5 text-muted-foreground" />
+      </div>
+
+      <h3 className="mt-4 text-sm font-semibold">
+        No expenses found
+      </h3>
+
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        Try changing your filters or add your first expense.
+      </p>
+
+      <Button
+        className="mt-5 gap-2"
+        onClick={onAddExpense}
+      >
+        <Plus className="size-4" />
+        Add Expense
+      </Button>
+    </div>
   );
 }

@@ -3,13 +3,15 @@
 import * as React from "react"
 import {
   LayoutDashboard,
-  Users2,
   Receipt,
-  History,
-  TrendingUp,
   Settings,
   Wallet,
   PanelLeft,
+  Users,
+  UserRound,
+  MessageCircle,
+  BarChart3,
+  HandCoins,
 } from "lucide-react"
 
 import { NavMain } from "@/components/layout/dashboard/nav-main"
@@ -31,70 +33,62 @@ const data = {
     email: "user@billbuddy.com",
     avatar: "/avatars/user.jpg",
   },
+
   navMain: [
     {
       title: "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
-      isActive: true,
     },
     {
-      title: "Personal Expenses",
+      title: "Expenses",
       url: "/expenses",
       icon: Receipt,
+    },
+    {
+      title: "Groups",
+      url: "/groups",
+      icon: Users,
       // items: [
       //   {
-      //     title: "All Expenses",
-      //     url: "/expenses",
+      //     title: "All Groups",
+      //     url: "/groups",
       //   },
       //   {
-      //     title: "Add a Bill",
-      //     url: "/expenses/new",
-      //   },
-      //   {
-      //     title: "Recurring Bills",
-      //     url: "/expenses/recurring",
+      //     title: "Create Group",
+      //     url: "/groups/new",
       //   },
       // ],
     },
     {
-      title: "Groups & Friends",
-      url: "/groups",
-      icon: Users2,
+      title: "Friends",
+      url: "/friends",
+      icon: UserRound,
       items: [
         {
-          title: "Active Groups",
-          url: "/groups",
-        },
-        {
-          title: "Friends List",
+          title: "All Friends",
           url: "/friends",
         },
         {
-          title: "Settlements",
-          url: "/settlements",
+          title: "Friend Requests",
+          url: "/friends/requests",
         },
       ],
+    },
+    {
+      title: "Messages",
+      url: "/messages",
+      icon: MessageCircle,
     },
     {
       title: "Analytics",
       url: "/analytics",
-      icon: TrendingUp,
-      items: [
-        {
-          title: "Spending Patterns",
-          url: "/analytics/spending",
-        },
-        {
-          title: "Monthly Summary",
-          url: "/analytics/monthly",
-        },
-      ],
+      icon: BarChart3,
     },
     {
-      title: "History",
-      url: "/history",
-      icon: History,
+      title: "Settlements",
+      url: "/settlements",
+      icon: HandCoins,
     },
     {
       title: "Settings",

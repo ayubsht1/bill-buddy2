@@ -104,10 +104,10 @@ export function NavUser({ user: propUser }: NavUserProps) {
               <span>Profile / Settings</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer gap-2">
+          {/* <DropdownMenuItem className="cursor-pointer gap-2">
             <Bell className="h-4 w-4 text-muted-foreground" />
             <span>Notifications</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuGroup>
         
         <DropdownMenuSeparator />
