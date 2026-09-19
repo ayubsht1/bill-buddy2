@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CircleArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,17 @@ export default function ResetPasswordPage() {
 
   return (
     <>
+    <motion.a
+        href="/auth/login"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        whileHover={{ scale: 1.08, x: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className="absolute top-4 left-4 md:top-8 md:left-8 rounded-full bg-muted/50 hover:bg-muted p-2 shadow-sm transition-colors duration-200 z-10"
+      >
+        <CircleArrowLeft className="text-primary h-8 w-8" />
+      </motion.a>
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 overflow-hidden relative">
         {/* 🌟 Smooth Springy Card Entry Animation */}
         <motion.div
