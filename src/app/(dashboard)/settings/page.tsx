@@ -97,7 +97,7 @@ export default function SettingsPage() {
     useState<SettingsSection>("profile");
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
@@ -109,10 +109,10 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Settings Navigation */}
         <aside className="h-fit lg:sticky lg:top-24">
-          <nav className="flex gap-1 overflow-x-auto lg:flex-col">
+          <nav className="grid grid-cols-2 gap-1 lg:flex lg:flex-col">
             {settingsNav.map((item) => {
               const Icon = item.icon;
               const active = activeSection === item.id;
@@ -124,7 +124,7 @@ export default function SettingsPage() {
                   onClick={() =>
                     setActiveSection(item.id)
                   }
-                  className={`flex min-w-max items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors lg:w-full ${
+                  className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors sm:gap-3 sm:px-3 lg:w-full ${
                     active
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <span className="lg:hidden">
+                  <span className="truncate text-sm lg:hidden">
                     {item.label}
                   </span>
                 </button>

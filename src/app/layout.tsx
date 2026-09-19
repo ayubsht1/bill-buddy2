@@ -7,7 +7,7 @@ import Providers from "@/providers/auth-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 
 export const metadata: Metadata = {
-  title: "BILL BUDDY",
+  title: "Bill Buddy",
   description: "Simplify your bills with us.",
 };
 

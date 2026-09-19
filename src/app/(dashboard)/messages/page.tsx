@@ -19,11 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -233,6 +228,7 @@ const initialMessages: Record<number, Message[]> = {
 
 export default function MessagesPage() {
   const [selectedId, setSelectedId] = useState(2);
+  const [showConversation, setShowConversation] = useState(false);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
 
@@ -279,9 +275,11 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-7rem)] w-full max-w-7xl min-h-[600px] overflow-hidden rounded-xl border bg-background shadow-sm">
+    <div className="mx-auto flex h-[calc(100dvh-8rem)] min-h-0 w-full max-w-7xl overflow-hidden rounded-xl border bg-background shadow-sm sm:h-[calc(100vh-7rem)] sm:min-h-[600px]">
       {/* Conversation Sidebar */}
-      <aside className="flex w-[320px] shrink-0 flex-col border-r">
+      <aside
+        className={`${showConversation ? "hidden" : "flex"} w-full shrink-0 flex-col border-r md:flex md:w-[320px]`}
+      >
         {/* Sidebar Header */}
         <div className="border-b p-4">
           <div className="flex items-center justify-between">
@@ -327,7 +325,10 @@ export default function MessagesPage() {
               <button
                 key={conversation.id}
                 type="button"
-                onClick={() => setSelectedId(conversation.id)}
+                onClick={() => {
+                  setSelectedId(conversation.id);
+                  setShowConversation(true);
+                }}
                 className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors ${
                   active
                     ? "bg-primary/8"
@@ -380,7 +381,9 @@ export default function MessagesPage() {
       </aside>
 
       {/* Chat */}
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section
+        className={`${showConversation ? "flex" : "hidden"} min-w-0 flex-1 flex-col md:flex`}
+      >
         {selectedConversation ? (
           <>
             {/* Chat Header */}
@@ -389,6 +392,8 @@ export default function MessagesPage() {
                 variant="ghost"
                 size="icon"
                 className="size-8 md:hidden"
+                onClick={() => setShowConversation(false)}
+                aria-label="Back to conversations"
               >
                 <ArrowLeft className="size-4" />
               </Button>
