@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useSession } from "next-auth/react"
 import {
   LayoutDashboard,
   Users2,
@@ -106,14 +105,7 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { data: session, status } = useSession()
   const { toggleSidebar } = useSidebar()
-  
-  const user = {
-    name: session?.user?.name || "Guest User",
-    email: session?.user?.email || "",
-    avatar: session?.user?.image || "",
-  }
 
   return (
     <Sidebar collapsible="icon" {...props}>

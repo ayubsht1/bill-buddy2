@@ -2,7 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import { useSignOut } from "@/hooks/use-signout";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,15 +14,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { LogOut, Settings } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Settings,
+} from "lucide-react";
 
 export function UserDropdown() {
   const { data: session } = useSession();
-  const handleSignOut = useSignOut(); 
-  
+  const handleSignOut = useSignOut();
+
   if (!session?.user) return null;
 
   const { username, name, email, image } = session.user as {
@@ -33,93 +40,151 @@ export function UserDropdown() {
 
   return (
     <DropdownMenu modal={false}>
+      {/* Trigger */}
       <DropdownMenuTrigger asChild>
         <button
           className="
-            group flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium
-            transition-all duration-200 text-muted-foreground hover:text-primary
-            active:scale-95 outline-none select-none
-            data-[state=open]:bg-primary/10 data-[state=open]:text-primary data-[state=open]:font-semibold
+            group flex items-center gap-2 rounded-xl
+            px-2 py-1.5
+            outline-none
+            transition-all duration-200
+            hover:bg-muted/70
+            focus-visible:ring-2 focus-visible:ring-primary/30
+            data-[state=open]:bg-muted
           "
         >
-          <Avatar
-            className="
-              h-6 w-6 transition-all duration-200
-              group-data-[state=open]:ring-2
-              group-data-[state=open]:ring-primary/40
-            "
-          >
+          <Avatar className="h-8 w-8 border border-border/60">
             {image ? (
-              <AvatarImage src={image} alt={displayName} />
+              <AvatarImage
+                src={image}
+                alt={displayName}
+              />
             ) : (
-              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
+              <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
                 {initials}
               </AvatarFallback>
             )}
           </Avatar>
 
-          <span className="hidden md:inline">
-            {displayName}
-          </span>
+          <div className="hidden min-w-0 flex-col items-start md:flex">
+            <span className="max-w-[120px] truncate text-sm font-medium text-foreground">
+              {displayName}
+            </span>
+          </div>
+
+          <ChevronDown
+            className="
+              hidden h-4 w-4 text-muted-foreground
+              transition-transform duration-200
+              group-data-[state=open]:rotate-180
+              md:block
+            "
+          />
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuPortal>
-        <DropdownMenuContent 
-          align="end" 
-          sideOffset={8}
-          className="w-56 bg-card text-foreground border border-muted p-2 rounded-lg shadow-md backdrop-blur-md"
-        >
-          <DropdownMenuLabel className="px-2 py-2.5">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                {image ? (
-                  <AvatarImage src={image} alt={displayName} />
-                ) : (
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {initials}
-                  </AvatarFallback>
-                )}
-              </Avatar>
+      {/* Menu */}
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="
+          w-64 rounded-xl
+          border border-border/60
+          bg-card
+          p-1.5
+          shadow-xl shadow-black/10
+        "
+      >
+        {/* Profile */}
+        <DropdownMenuLabel className="p-0">
+          <div className="flex items-center gap-3 rounded-lg px-3 py-3">
+            <Avatar className="h-10 w-10 border border-border/60">
+              {image ? (
+                <AvatarImage
+                  src={image}
+                  alt={displayName}
+                />
+              ) : (
+                <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              )}
+            </Avatar>
 
-              <div className="flex flex-col justify-center min-w-0">
-                <div className="font-semibold text-sm truncate text-foreground">{displayName}</div>
-                {email && (
-                  <div className="text-xs text-muted-foreground truncate">{email}</div>
-                )}
-              </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {displayName}
+              </p>
+
+              {email && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {email}
+                </p>
+              )}
             </div>
-          </DropdownMenuLabel>
+          </div>
+        </DropdownMenuLabel>
 
-          <DropdownMenuSeparator className="bg-muted my-1" />
+        <DropdownMenuSeparator className="my-1.5" />
 
-          <DropdownMenuItem asChild>
-            <Link 
-              href="/settings"
-              className="
-                flex items-center gap-2 px-2 py-2 text-sm rounded-md cursor-pointer
-                text-muted-foreground transition-colors duration-150
-                focus:bg-primary/10 focus:text-primary focus:font-medium outline-none
-              "
-            >
+        {/* Settings */}
+        <DropdownMenuItem
+          asChild
+          className="
+            cursor-pointer rounded-lg
+            px-3 py-2.5
+            text-sm
+            text-muted-foreground
+            outline-none
+            transition-colors
+            focus:bg-primary/10
+            focus:text-primary
+          "
+        >
+          <Link href="/settings" className="flex w-full items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
               <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </Link>
-          </DropdownMenuItem>
+            </span>
 
-          <DropdownMenuItem 
-            onClick={handleSignOut}
-            className="
-              flex items-center gap-2 px-2 py-2 text-sm rounded-md cursor-pointer
-              text-muted-foreground transition-colors duration-150
-              focus:bg-destructive/10 focus:text-destructive focus:font-medium outline-none
-            "
-          >
+            <div className="flex flex-col">
+              <span className="font-medium text-foreground">
+                Settings
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Manage your account
+              </span>
+            </div>
+          </Link>
+        </DropdownMenuItem>
+
+        {/* Sign out */}
+        <DropdownMenuItem
+          onClick={handleSignOut}
+          className="
+            cursor-pointer rounded-lg
+            px-3 py-2.5
+            text-sm
+            text-muted-foreground
+            outline-none
+            transition-colors
+            focus:bg-destructive/10
+            focus:text-destructive
+          "
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
             <LogOut className="h-4 w-4" />
-            <span>Sign out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
+          </span>
+
+          <div className="flex flex-col">
+            <span className="font-medium">
+              Sign out
+            </span>
+            <span className="text-xs text-muted-foreground">
+              End your current session
+            </span>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }

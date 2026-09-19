@@ -19,17 +19,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <SidebarProvider>
       <AppSidebar />
 
-      <SidebarInset className="relative h-screen overflow-y-auto bg-muted/10">
-        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md flex h-16 shrink-0 items-center transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex w-full items-center justify-between px-6">
+      <SidebarInset className="relative min-h-svh overflow-y-auto bg-muted/10">
+        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center bg-background/80 backdrop-blur-md transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex w-full items-center justify-between gap-3 px-4 sm:px-6">
             {/* Left section: Sidebar trigger & breadcrumbs */}
             <div className="flex items-center gap-3">
-              {/* <SidebarTrigger className="-ml-1 h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground" /> */}
+              <SidebarTrigger className="-ml-2 h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground md:hidden" />
               <DynamicBreadcrumbs />
             </div>
 
             {/* Right section: Notifications, Theme toggle, and User Profile */}
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               {/* Notification Button */}
               <Button
                 variant="ghost"
@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <ModeToggle />
 
               {/* User Profile Component moved here */}
-              <div className="ml-1 border-l pl-3">
+              <div className="ml-1 border-l pl-2 sm:pl-3">
                 <NavUser />
               </div>
             </div>
@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex flex-1 flex-col gap-6 p-6 pt-2">
+        <main className="flex flex-1 flex-col gap-6 p-4 pt-2 sm:p-6 sm:pt-2">
           {children}
         </main>
       </SidebarInset>

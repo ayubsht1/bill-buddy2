@@ -17,7 +17,6 @@ import {
 import {
   NameType,
   ValueType,
-  Payload,
 } from "recharts/types/component/DefaultTooltipContent";
 import {
   Card,
@@ -177,14 +176,14 @@ export default function ProfessionalDashboard() {
 
   return (
     <motion.div
-      className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 text-foreground overflow-hidden"
+      className="mx-auto w-full max-w-7xl space-y-4 overflow-hidden text-foreground sm:space-y-8 sm:p-2 lg:p-4"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {/* 🌟 1. AI COACH HERO BANNER */}
       <motion.div variants={cardVariants}>
-        <Card className="relative overflow-hidden border-primary/20 bg-card text-card-foreground shadow-xs p-4 sm:p-6">
+        <Card className="relative overflow-hidden border-primary/20 bg-card p-3 text-card-foreground shadow-xs sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3 sm:gap-4">
               <div className="p-2.5 sm:p-3 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
@@ -219,8 +218,8 @@ export default function ProfessionalDashboard() {
             </button>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-normal">
+          <div className="mt-3 border-t border-border pt-3 sm:mt-4 sm:pt-4">
+            <p className="text-xs font-normal leading-relaxed text-foreground/90 sm:text-sm">
               💡{" "}
               <strong className="font-semibold text-foreground">
                 You are performing exceptionally well!
@@ -241,14 +240,14 @@ export default function ProfessionalDashboard() {
 
       {/* 🌟 2. TOP METRICS STRIP */}
       <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+        className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4"
         variants={containerVariants}
       >
         {/* Net Group Balance */}
         <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="shadow-xs hover:shadow-md transition-shadow p-4 sm:p-5">
+          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
             <div className="flex items-center justify-between pb-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Group Settlement
               </span>
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -256,13 +255,13 @@ export default function ProfessionalDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
+              <div className="text-lg font-bold font-mono tracking-tight sm:text-2xl">
                 $145.00
               </div>
               <div className="mt-2">
                 <Badge
                   variant="outline"
-                  className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 text-[10px] sm:text-xs font-medium py-0.5 px-2"
+                  className="border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 sm:px-2 sm:text-xs"
                 >
                   + Owed to you
                 </Badge>
@@ -273,9 +272,9 @@ export default function ProfessionalDashboard() {
 
         {/* Monthly Inflow */}
         <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="shadow-xs hover:shadow-md transition-shadow p-4 sm:p-5">
+          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
             <div className="flex items-center justify-between pb-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Monthly Inflow
               </span>
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -283,7 +282,7 @@ export default function ProfessionalDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
+              <div className="text-lg font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-2xl">
                 +$3,500.00
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
@@ -298,9 +297,9 @@ export default function ProfessionalDashboard() {
 
         {/* Monthly Outflow */}
         <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="shadow-xs hover:shadow-md transition-shadow p-4 sm:p-5">
+          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
             <div className="flex items-center justify-between pb-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Monthly Outflow
               </span>
               <div className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
@@ -308,7 +307,7 @@ export default function ProfessionalDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-rose-600 dark:text-rose-400">
+              <div className="text-lg font-bold font-mono tracking-tight text-rose-600 dark:text-rose-400 sm:text-2xl">
                 -$1,250.00
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
@@ -323,9 +322,9 @@ export default function ProfessionalDashboard() {
 
         {/* Net Savings */}
         <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="shadow-xs hover:shadow-md transition-shadow p-4 sm:p-5">
+          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
             <div className="flex items-center justify-between pb-2">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Net Savings
               </span>
               <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -333,7 +332,7 @@ export default function ProfessionalDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight">
+              <div className="text-lg font-bold font-mono tracking-tight sm:text-2xl">
                 $2,250.00
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
@@ -348,13 +347,13 @@ export default function ProfessionalDashboard() {
       </motion.div>
 
       {/* 🌟 3. CHARTS GRID */}
-      <div className="grid gap-6 lg:grid-cols-12 items-stretch">
+      <div className="grid items-stretch gap-4 sm:gap-6 lg:grid-cols-12">
         {/* Left Card: Category Breakdown */}
         <motion.div
           className="lg:col-span-5 flex flex-col"
           variants={cardVariants}
         >
-          <Card className="flex-1 flex flex-col justify-between shadow-xs p-4 sm:p-6">
+          <Card className="flex flex-1 flex-col justify-between p-3 shadow-xs sm:p-6">
             <CardHeader className="p-0 pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -369,7 +368,7 @@ export default function ProfessionalDashboard() {
             </CardHeader>
 
             <CardContent className="p-0 space-y-4 sm:space-y-6 flex-1 flex flex-col justify-center">
-              <div className="h-48 sm:h-56 w-full relative flex items-center justify-center">
+              <div className="relative flex h-40 w-full items-center justify-center sm:h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -402,7 +401,7 @@ export default function ProfessionalDashboard() {
               </div>
 
               {/* Responsive Legend List */}
-              <div className="space-y-2 pt-3 sm:pt-4 border-t border-border">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-3 sm:block sm:space-y-2 sm:pt-4">
                 {CATEGORY_DATA.map((cat) => (
                   <div
                     key={cat.name}
@@ -437,7 +436,7 @@ export default function ProfessionalDashboard() {
           className="lg:col-span-7 flex flex-col"
           variants={cardVariants}
         >
-          <Card className="flex-1 flex flex-col justify-between shadow-xs p-4 sm:p-6">
+          <Card className="flex flex-1 flex-col justify-between p-3 shadow-xs sm:p-6">
             <CardHeader className="p-0 pb-4 sm:pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -474,7 +473,7 @@ export default function ProfessionalDashboard() {
             </CardHeader>
 
             <CardContent className="p-0 flex-1 flex flex-col justify-between space-y-4 sm:space-y-6">
-              <div className="h-56 sm:h-72 lg:h-80 w-full">
+              <div className="h-48 w-full sm:h-72 lg:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={HISTORICAL_DATA}
@@ -523,7 +522,7 @@ export default function ProfessionalDashboard() {
                 </ResponsiveContainer>
               </div>
 
-              <div className="flex items-center justify-center gap-6 sm:gap-8 pt-3 sm:pt-4 border-t border-border text-xs font-medium text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border pt-3 text-[11px] font-medium text-muted-foreground sm:gap-8 sm:pt-4 sm:text-xs">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500" />
                   <span className="text-foreground">Inflow (Income)</span>
