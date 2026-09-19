@@ -11,10 +11,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { LoginForm } from "@/components/auth/login-form";
+import { LoginForm } from "@/features/auth/components/login-form";
 import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
-import { ResendVerificationModal } from "@/components/auth/ResendVerificationModal";
+import { ResendVerificationModal } from "@/features/auth/components/resend-verification-modal";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 

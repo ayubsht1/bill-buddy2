@@ -11,8 +11,8 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { SignupForm } from "@/components/auth/SignupForm";
-import api from "@/lib/api/api";
+import { SignupForm } from "@/features/auth/components/signup-form";
+import api from "@/lib/api/client";
 import { motion } from "framer-motion";
 import Link from "next/link";
 

@@ -1,12 +1,12 @@
-import { AppSidebar } from "@/components/app-sidebar";
-import { DynamicBreadcrumbs } from "@/components/dynamic-breadcrumbs";
+import { AppSidebar } from "@/components/layout/dashboard/app-sidebar";
+import { DynamicBreadcrumbs } from "@/components/layout/dashboard/dynamic-breadcrumbs";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { ModeToggle } from "@/components/mode-toggle";
-import { NavUser } from "@/components/nav-user";
+import { ModeToggle } from "@/components/layout/dashboard/mode-toggle";
+import { NavUser } from "@/components/layout/dashboard/nav-user";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

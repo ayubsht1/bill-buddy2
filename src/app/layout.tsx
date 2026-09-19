@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
-import Providers from "./auth/provider/provider";
-import { ThemeProvider } from "@/components/theme-provider";
+import Providers from "@/providers/auth-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 
 export const metadata: Metadata = {
   title: "BILL BUDDY",

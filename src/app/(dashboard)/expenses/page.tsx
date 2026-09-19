@@ -29,7 +29,7 @@ import {
   PersonalExpense,
   TransactionType,
   CATEGORY_OPTIONS,
-} from "@/components/personal/AddEditTransactionModal";
+} from "@/features/expenses/components/add-edit-transaction-modal";
 
 const INITIAL_DUMMY_DATA: PersonalExpense[] = [
   {

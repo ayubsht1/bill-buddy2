@@ -13,7 +13,7 @@ import {
   PanelLeft,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
+import { NavMain } from "@/components/layout/dashboard/nav-main"
 import {
   Sidebar,
   SidebarContent,

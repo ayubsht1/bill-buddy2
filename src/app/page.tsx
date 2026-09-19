@@ -14,7 +14,7 @@ import {
   usePathname,
 } from "next/navigation";
 import { motion } from "framer-motion";
-import { ModeToggle } from "@/components/mode-toggle";
+import { ModeToggle } from "@/components/layout/dashboard/mode-toggle";
 
 const fadeInUp = {
   hidden: {
