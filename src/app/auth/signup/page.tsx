@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SignupForm } from "@/features/auth/components/signup-form";
 import api from "@/lib/api/client";
+import { getApiErrorMessage } from "@/lib/api/billbuddy";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -50,14 +51,8 @@ export default function SignupPage() {
 
       toast.success("Account created successfully!");
       router.push("/auth/login");
-    } catch (err: any) {
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "Something went wrong";
-
-      toast.error(message);
-      console.log("Signup error:", err);
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -7,8 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/layout/dashboard/mode-toggle";
 import { NavUser } from "@/components/layout/dashboard/nav-user";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Toaster } from "react-hot-toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,6 +16,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
+      <Toaster position="top-right" />
       <AppSidebar />
 
       <SidebarInset className="relative min-h-svh overflow-y-auto bg-muted/10">
@@ -28,20 +28,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DynamicBreadcrumbs />
             </div>
 
-            {/* Right section: Notifications, Theme toggle, and User Profile */}
+            {/* Right section: Theme toggle and User Profile */}
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-              {/* Notification Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
-                aria-label="Notifications"
-              >
-                <Bell className="h-4 w-4" />
-                {/* Optional notification badge dot */}
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
-              </Button>
-
               <ModeToggle />
 
               {/* User Profile Component moved here */}

@@ -28,12 +28,6 @@ import {
 } from "@/components/ui/sidebar"
 
 const data = {
-  user: {
-    name: "User Name",
-    email: "user@billbuddy.com",
-    avatar: "/avatars/user.jpg",
-  },
-
   navMain: [
     {
       title: "Dashboard",
@@ -49,16 +43,6 @@ const data = {
       title: "Groups",
       url: "/groups",
       icon: Users,
-      // items: [
-      //   {
-      //     title: "All Groups",
-      //     url: "/groups",
-      //   },
-      //   {
-      //     title: "Create Group",
-      //     url: "/groups/new",
-      //   },
-      // ],
     },
     {
       title: "Friends",

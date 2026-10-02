@@ -1,22 +1,21 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import { apiPost, getApiErrorMessage } from "@/lib/api/billbuddy";
 
 export function useSignOut() {
   const { data: session } = useSession();
 
-  const handleSignOut = async () => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/logout/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.accessToken}`,
-      },
-      body: JSON.stringify({ refresh: session?.refreshToken }),
-    });
-
-    signOut({ callbackUrl: "/" });
+  return async () => {
+    try {
+      if (session?.refreshToken) {
+        await apiPost("/logout/", { refresh: session.refreshToken });
+      }
+    } catch (error) {
+      toast.error(`Signed out locally, but the server logout request failed: ${getApiErrorMessage(error)}`);
+    } finally {
+      await signOut({ callbackUrl: "/auth/login" });
+    }
   };
-
-  return handleSignOut;
 }

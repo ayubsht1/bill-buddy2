@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Users } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,37 +16,50 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { apiPost, getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
 
 interface CreateGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (group: Group) => void;
 }
 
 export function CreateGroupDialog({
   open,
   onOpenChange,
+  onCreated,
 }: CreateGroupDialogProps) {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName.trim()) return;
-
-    // TODO: Connect to your Django API.
-    console.log({
-      name: groupName.trim(),
-      description: groupDescription.trim(),
-    });
-
-    setGroupName("");
-    setGroupDescription("");
-    onOpenChange(false);
+    setSaving(true);
+    setError(null);
+    try {
+      const group = await apiPost<Group>("/groups/", {
+        name: groupName.trim(),
+        description: groupDescription.trim(),
+      });
+      onCreated?.(group);
+      toast.success("Group created.");
+      setGroupName("");
+      setGroupDescription("");
+      onOpenChange(false);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setGroupName("");
       setGroupDescription("");
+      setError(null);
     }
 
     onOpenChange(value);
@@ -72,6 +86,7 @@ export function CreateGroupDialog({
 
             <Input
               id="group-name"
+              maxLength={100}
               value={groupName}
               onChange={(event) =>
                 setGroupName(event.target.value)
@@ -92,6 +107,7 @@ export function CreateGroupDialog({
 
             <Textarea
               id="group-description"
+              maxLength={1000}
               value={groupDescription}
               onChange={(event) =>
                 setGroupDescription(event.target.value)
@@ -100,6 +116,7 @@ export function CreateGroupDialog({
               className="min-h-[90px] resize-none"
             />
           </div>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
           {/* Members */}
           <div className="rounded-lg border bg-muted/30 p-4">
@@ -132,11 +149,11 @@ export function CreateGroupDialog({
 
           <Button
             onClick={handleCreateGroup}
-            disabled={!groupName.trim()}
+            disabled={!groupName.trim() || saving}
             className="gap-2"
           >
             <Plus className="size-4" />
-            Create Group
+            {saving ? "Creating..." : "Create Group"}
           </Button>
         </DialogFooter>
       </DialogContent>

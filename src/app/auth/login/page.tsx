@@ -118,7 +118,7 @@ export default function LoginPage() {
       );
 
       setShowVerifyModal(false);
-    } catch (err) {
+    } catch {
       toast.error("Failed to resend link. Please try again.");
     } finally {
       setResending(false);

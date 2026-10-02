@@ -1,541 +1,131 @@
 "use client";
 
-import { useState } from "react";
-import { motion, Variants } from "framer-motion";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  NameType,
-  ValueType,
-} from "recharts/types/component/DefaultTooltipContent";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, PiggyBank, RefreshCw, Sparkles, Wallet } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
-import {
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowUp,
-  ArrowDown,
-  Wallet,
-  Sparkles,
-  TrendingUp,
-  PieChart as PieChartIcon,
-  PiggyBank,
-  RefreshCw,
-  Info,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiGet, getApiErrorMessage, type DashboardAnalytics } from "@/lib/api/billbuddy";
 
-// Interfaces
-interface CategoryItem {
-  name: string;
-  value: number;
-  color: string;
-  pct: number;
-  trend: string;
-}
-
-interface HistoricalItem {
-  month: string;
-  income: number;
-  expense: number;
-  net: number;
-}
-
-// Category Data
-const CATEGORY_DATA: CategoryItem[] = [
-  {
-    name: "Groceries",
-    value: 450,
-    color: "hsl(var(--primary))",
-    pct: 36,
-    trend: "+4%",
-  },
-  {
-    name: "Rent & Utilities",
-    value: 380,
-    color: "hsl(217, 91%, 60%)",
-    pct: 30,
-    trend: "0%",
-  },
-  {
-    name: "Dining Out",
-    value: 220,
-    color: "hsl(262, 83%, 58%)",
-    pct: 18,
-    trend: "-12%",
-  },
-  {
-    name: "Entertainment",
-    value: 120,
-    color: "hsl(187, 92%, 41%)",
-    pct: 10,
-    trend: "+2%",
-  },
-  {
-    name: "Subscriptions",
-    value: 80,
-    color: "hsl(316, 70%, 50%)",
-    pct: 6,
-    trend: "0%",
-  },
-];
-
-const HISTORICAL_DATA: HistoricalItem[] = [
-  { month: "Mar", income: 2800, expense: 1200, net: 1600 },
-  { month: "Apr", income: 3100, expense: 1450, net: 1650 },
-  { month: "May", income: 2900, expense: 1100, net: 1800 },
-  { month: "Jun", income: 3400, expense: 1600, net: 1800 },
-  { month: "Jul", income: 3200, expense: 1300, net: 1900 },
-  { month: "Aug", income: 3500, expense: 1250, net: 2250 },
-];
-
-// Animation Variants with explicit strict typing
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05, delayChildren: 0.05 },
-  },
+const categoryLabels: Record<string, string> = {
+  FOOD: "Food & Dining",
+  SHOPPING: "Shopping",
+  UTILITIES: "Bills & Utilities",
+  TRANSPORT: "Transportation",
+  ENTERTAINMENT: "Entertainment",
+  GROCERIES: "Groceries",
+  OTHER: "Other",
 };
+const chartColors = ["var(--primary)", "#3b82f6", "#8b5cf6", "#06b6d4", "#ec4899", "#f59e0b", "#64748b"];
+const money = (value: number) => `Rs. ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 350, damping: 25 },
-  },
-};
+export default function DashboardPage() {
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<string[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
-// Explicit interface to resolve TypeScript property missing errors
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    name?: NameType;
-    value?: ValueType;
-    color?: string;
-    fill?: string;
-  }>;
-  label?: string | number;
-}
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      setAnalytics(await apiGet<DashboardAnalytics>("/expenses/dashboard/"));
+    } catch (error) {
+      setAnalyticsError(getApiErrorMessage(error));
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
 
-// Strongly-typed Recharts Tooltip Component
-const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-lg border border-border bg-popover/95 p-2.5 sm:p-3 shadow-lg backdrop-blur-sm text-xs space-y-1.5 text-popover-foreground">
-        <p className="font-semibold">{label}</p>
-        <div className="space-y-1 border-t border-border pt-1.5">
-          {payload.map((entry, index: number) => (
-            <div
-              key={`item-${index}`}
-              className="flex items-center justify-between gap-3 sm:gap-4"
-            >
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: entry.color || entry.fill }}
-                />
-                {entry.name}:
-              </span>
-              <span className="font-mono font-semibold text-foreground">
-                ${Number(entry.value).toLocaleString()}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
+  const loadInsights = useCallback(async () => {
+    setInsightsLoading(true);
+    setInsightsError(null);
+    try {
+      const response = await apiGet<{ insights: string }>("/expenses/dashboard/ai-insights/");
+      setInsights(response.insights.split(/\r?\n/).map((line) => line.replace(/^\s*[-*•]\s*/, "").trim()).filter(Boolean));
+    } catch (error) {
+      setInsightsError(getApiErrorMessage(error));
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, []);
 
-export default function ProfessionalDashboard() {
-  const [activeTab, setActiveTab] = useState<"6m" | "1y">("6m");
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  useEffect(() => { void loadAnalytics(); void loadInsights(); }, [loadAnalytics, loadInsights]);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 800);
-  };
+  const categories = useMemo(() => {
+    const source = analytics?.category_distribution ?? {};
+    const total = Object.values(source).reduce((sum, value) => sum + value, 0);
+    return Object.entries(source).map(([category, value], index) => ({
+      name: categoryLabels[category] ?? category.replaceAll("_", " "),
+      value,
+      color: chartColors[index % chartColors.length],
+      pct: total > 0 ? (value / total) * 100 : 0,
+    }));
+  }, [analytics]);
+
+  const history = analytics?.monthly_history ?? [];
+  const summary = analytics?.summary;
+  const savingsRate = summary && summary.total_personal_income_this_month > 0
+    ? Math.max(0, (summary.net_personal_savings / summary.total_personal_income_this_month) * 100)
+    : 0;
+  const groupStatus = summary?.balance_status === "YOU_ARE_OWED" ? "Owed to you" : summary?.balance_status === "OWED_MONEY" ? "You owe" : "Settled";
 
   return (
-    <motion.div
-      className="mx-auto w-full max-w-7xl space-y-4 overflow-hidden text-foreground sm:space-y-8 sm:p-2 lg:p-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* 🌟 1. AI COACH HERO BANNER */}
-      <motion.div variants={cardVariants}>
-        <Card className="relative overflow-hidden border-primary/20 bg-card p-3 text-card-foreground shadow-xs sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-              <div className="p-2.5 sm:p-3 rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 shrink-0">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-bold tracking-tight">
-                    BillBuddy AI Coach
-                  </h2>
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] sm:text-xs uppercase font-semibold px-2 py-0.5"
-                  >
-                    Live Insights
-                  </Badge>
-                </div>
-                <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                  Updated automatically based on current month settlements
-                </p>
-              </div>
-            </div>
+    <div className="mx-auto w-full max-w-7xl space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1><p className="mt-1 text-sm text-muted-foreground">Your monthly cash flow and group balance at a glance.</p></div><Button variant="outline" size="sm" className="gap-2" disabled={analyticsLoading} onClick={() => void loadAnalytics()}><RefreshCw className={`size-4 ${analyticsLoading ? "animate-spin" : ""}`} /> Refresh</Button></div>
 
-            <button
-              onClick={handleRefresh}
-              className="w-full sm:w-auto text-xs font-medium text-muted-foreground hover:text-foreground flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted transition-colors shadow-xs"
-            >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              <span>Refresh Insights</span>
-            </button>
-          </div>
+      <Card className="relative overflow-hidden border-primary/20 bg-card">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3"><div className="rounded-xl bg-primary p-2.5 text-primary-foreground"><Sparkles className="size-5" /></div><div><CardTitle className="text-base">BillBuddy AI Coach</CardTitle><CardDescription className="mt-1">Recommendations based on your current financial activity.</CardDescription></div></div>
+          <Button variant="outline" size="sm" className="gap-2" disabled={insightsLoading} onClick={() => void loadInsights()}><RefreshCw className={`size-3.5 ${insightsLoading ? "animate-spin" : ""}`} /> Retry insights</Button>
+        </CardHeader>
+        <CardContent>
+          {insightsLoading ? <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-4 w-3/5" /></div> :
+            insightsError ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">{insightsError}</p><Button variant="outline" size="sm" onClick={() => void loadInsights()}>Try again</Button></div> :
+            insights.length ? <ul className="space-y-2">{insights.map((insight, index) => <li key={`${index}-${insight}`} className="flex gap-2 text-sm leading-relaxed"><span className="mt-0.5 text-primary">•</span><span>{insight}</span></li>)}</ul> :
+            <p className="text-sm text-muted-foreground">No recommendations are available yet. Add transactions and try again.</p>}
+        </CardContent>
+      </Card>
 
-          <div className="mt-3 border-t border-border pt-3 sm:mt-4 sm:pt-4">
-            <p className="text-xs font-normal leading-relaxed text-foreground/90 sm:text-sm">
-              💡{" "}
-              <strong className="font-semibold text-foreground">
-                You are performing exceptionally well!
-              </strong>{" "}
-              Your dining expenses dropped by{" "}
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold inline-flex items-center gap-0.5">
-                12% <ArrowDown className="h-3.5 w-3.5" />
-              </span>{" "}
-              compared to July. You are owed{" "}
-              <strong className="font-semibold text-foreground">$145.00</strong>{" "}
-              across 3 active group tabs. We recommend routing your{" "}
-              <strong className="font-semibold text-foreground">$800.00</strong>{" "}
-              monthly cash surplus into your High-Yield Savings goal.
-            </p>
-          </div>
-        </Card>
-      </motion.div>
+      {analyticsError && <Card className="border-destructive/40"><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><p className="text-sm text-destructive">{analyticsError}</p><Button variant="outline" size="sm" onClick={() => void loadAnalytics()}>Retry dashboard data</Button></CardContent></Card>}
 
-      {/* 🌟 2. TOP METRICS STRIP */}
-      <motion.div
-        className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4"
-        variants={containerVariants}
-      >
-        {/* Net Group Balance */}
-        <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
-            <div className="flex items-center justify-between pb-2">
-              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
-                Group Settlement
-              </span>
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Wallet className="h-4 w-4" />
-              </div>
-            </div>
-            <div>
-              <div className="text-lg font-bold font-mono tracking-tight sm:text-2xl">
-                $145.00
-              </div>
-              <div className="mt-2">
-                <Badge
-                  variant="outline"
-                  className="border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 sm:px-2 sm:text-xs"
-                >
-                  + Owed to you
-                </Badge>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Monthly Inflow */}
-        <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
-            <div className="flex items-center justify-between pb-2">
-              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
-                Monthly Inflow
-              </span>
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <ArrowDownLeft className="h-4 w-4" />
-              </div>
-            </div>
-            <div>
-              <div className="text-lg font-bold font-mono tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-2xl">
-                +$3,500.00
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                  <ArrowUp className="h-3 w-3" /> 8.4%
-                </span>
-                <span>vs last month</span>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Monthly Outflow */}
-        <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
-            <div className="flex items-center justify-between pb-2">
-              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
-                Monthly Outflow
-              </span>
-              <div className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <ArrowUpRight className="h-4 w-4" />
-              </div>
-            </div>
-            <div>
-              <div className="text-lg font-bold font-mono tracking-tight text-rose-600 dark:text-rose-400 sm:text-2xl">
-                -$1,250.00
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                  <ArrowDown className="h-3 w-3" /> 3.8%
-                </span>
-                <span>vs last month</span>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Net Savings */}
-        <motion.div variants={cardVariants} whileHover={{ y: -2 }}>
-          <Card className="h-full p-3 shadow-xs transition-shadow hover:shadow-md sm:p-5">
-            <div className="flex items-center justify-between pb-2">
-              <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
-                Net Savings
-              </span>
-              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <PiggyBank className="h-4 w-4" />
-              </div>
-            </div>
-            <div>
-              <div className="text-lg font-bold font-mono tracking-tight sm:text-2xl">
-                $2,250.00
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
-                <span className="font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
-                  64.2% Rate
-                </span>
-                <span>saved</span>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* 🌟 3. CHARTS GRID */}
-      <div className="grid items-stretch gap-4 sm:gap-6 lg:grid-cols-12">
-        {/* Left Card: Category Breakdown */}
-        <motion.div
-          className="lg:col-span-5 flex flex-col"
-          variants={cardVariants}
-        >
-          <Card className="flex flex-1 flex-col justify-between p-3 shadow-xs sm:p-6">
-            <CardHeader className="p-0 pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
-                  <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Category Breakdown
-                </CardTitle>
-                <Info className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
-              </div>
-              <CardDescription className="text-xs">
-                Personal expenditure split for August 2026
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="p-0 space-y-4 sm:space-y-6 flex-1 flex flex-col justify-center">
-              <div className="relative flex h-40 w-full items-center justify-center sm:h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={CATEGORY_DATA}
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {CATEGORY_DATA.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          stroke="transparent"
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-
-                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
-                    Total Spent
-                  </span>
-                  <span className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                    $1,250
-                  </span>
-                </div>
-              </div>
-
-              {/* Responsive Legend List */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-3 sm:block sm:space-y-2 sm:pt-4">
-                {CATEGORY_DATA.map((cat) => (
-                  <div
-                    key={cat.name}
-                    className="flex items-center justify-between text-xs gap-2"
-                  >
-                    <div className="flex items-center gap-2 truncate min-w-0">
-                      <span
-                        className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      <span className="font-medium text-foreground truncate">
-                        {cat.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2.5 font-mono shrink-0">
-                      <span className="text-[11px] text-muted-foreground">
-                        {cat.pct}%
-                      </span>
-                      <span className="font-semibold text-foreground">
-                        ${cat.value.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Right Card: Recharts Bar Visualization */}
-        <motion.div
-          className="lg:col-span-7 flex flex-col"
-          variants={cardVariants}
-        >
-          <Card className="flex flex-1 flex-col justify-between p-3 shadow-xs sm:p-6">
-            <CardHeader className="p-0 pb-4 sm:pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Inflow vs. Outflow Trend
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Historical cashflow breakdown
-                </CardDescription>
-              </div>
-
-              <div className="self-start sm:self-auto flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs font-medium">
-                <button
-                  onClick={() => setActiveTab("6m")}
-                  className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all ${
-                    activeTab === "6m"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  6 Months
-                </button>
-                <button
-                  onClick={() => setActiveTab("1y")}
-                  className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md transition-all ${
-                    activeTab === "1y"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  1 Year
-                </button>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-0 flex-1 flex flex-col justify-between space-y-4 sm:space-y-6">
-              <div className="h-48 w-full sm:h-72 lg:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={HISTORICAL_DATA}
-                    margin={{ top: 10, right: 5, left: 0, bottom: 0 }} // Changed left from -25 to 0
-                    barGap={4}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="hsl(var(--border))"
-                      opacity={0.6}
-                    />
-                    <XAxis
-                      dataKey="month"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{
-                        fontSize: 11,
-                        fill: "var(--muted-foreground)",
-                      }}
-                    />
-                    <YAxis
-                      width={45} // Explicitly sets axis width for formatted currency labels
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{
-                        fontSize: 11,
-                        fill: "var(--muted-foreground)",
-                      }}
-                      tickFormatter={(value) => `$${value}`}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar
-                      dataKey="income"
-                      name="Inflow"
-                      fill="hsl(160, 84%, 39%)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="expense"
-                      name="Outflow"
-                      fill="hsl(343, 81%, 56%)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border pt-3 text-[11px] font-medium text-muted-foreground sm:gap-8 sm:pt-4 sm:text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500" />
-                  <span className="text-foreground">Inflow (Income)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-rose-500" />
-                  <span className="text-foreground">Outflow (Expenses)</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Group settlements" value={summary ? money(Math.abs(summary.net_group_balance)) : "—"} detail={summary ? groupStatus : "Balances across groups"} icon={Wallet} loading={analyticsLoading} />
+        <MetricCard title="Monthly inflow" value={summary ? money(summary.total_personal_income_this_month) : "—"} detail="Personal income this month" icon={ArrowDownLeft} tone="positive" loading={analyticsLoading} />
+        <MetricCard title="Monthly outflow" value={summary ? money(summary.total_personal_spent_this_month) : "—"} detail="Personal expenses this month" icon={ArrowUpRight} tone="negative" loading={analyticsLoading} />
+        <MetricCard title="Net savings" value={summary ? money(summary.net_personal_savings) : "—"} detail={`${savingsRate.toFixed(1)}% of recorded income`} icon={PiggyBank} loading={analyticsLoading} />
       </div>
-    </motion.div>
+
+      <div className="grid items-stretch gap-6 lg:grid-cols-5">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle className="text-base">Expense category breakdown</CardTitle><CardDescription>Personal expenses recorded this month.</CardDescription></CardHeader>
+          <CardContent>
+            {analyticsLoading ? <Skeleton className="h-64 w-full" /> : categories.length ? <>
+              <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categories} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={3}>{categories.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => money(Number(value))} /></PieChart></ResponsiveContainer></div>
+              <div className="mt-4 space-y-3 border-t pt-4">{categories.map((category) => <div key={category.name} className="flex items-center gap-3 text-sm"><span className="size-2.5 rounded-full" style={{ backgroundColor: category.color }} /><span className="min-w-0 flex-1 truncate">{category.name}</span><span className="text-xs text-muted-foreground">{category.pct.toFixed(0)}%</span><span className="font-medium">{money(category.value)}</span></div>)}</div>
+            </> : <EmptyChart message="No personal expenses recorded this month." />}
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-3">
+          <CardHeader><CardTitle className="text-base">Inflow vs. outflow</CardTitle><CardDescription>Monthly income and expenses, using recorded personal transactions.</CardDescription></CardHeader>
+          <CardContent>
+            {analyticsLoading ? <Skeleton className="h-[340px] w-full" /> : history.length ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...history].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => money(Number(value))} /><Bar dataKey="income" name="Inflow" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="expense" name="Outflow" fill="#f43f5e" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="Add transactions to see monthly cash flow." />}
+          </CardContent>
+        </Card>
+      </div>
+      {analytics && <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Group balance: {groupStatus}</Badge><Badge variant="outline">Analytics reflect backend personal transaction data</Badge></div>}
+    </div>
   );
+}
+
+function MetricCard({ title, value, detail, icon: Icon, tone, loading }: { title: string; value: string; detail: string; icon: typeof Wallet; tone?: "positive" | "negative"; loading: boolean }) {
+  return <Card><CardContent className="flex items-start justify-between p-5"><div className="min-w-0"><p className="text-sm text-muted-foreground">{title}</p>{loading ? <Skeleton className="mt-2 h-8 w-32" /> : <p className={`mt-2 truncate text-2xl font-semibold tracking-tight ${tone === "positive" ? "text-emerald-500" : tone === "negative" ? "text-rose-500" : ""}`}>{value}</p>}<p className="mt-1 text-xs text-muted-foreground">{detail}</p></div><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></CardContent></Card>;
+}
+
+function EmptyChart({ message }: { message: string }) {
+  return <div className="flex h-64 items-center justify-center rounded-lg border border-dashed px-6 text-center text-sm text-muted-foreground">{message}</div>;
 }

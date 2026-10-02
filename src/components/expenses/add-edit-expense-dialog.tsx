@@ -1,35 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Receipt,
-  Users,
-} from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, Check, ChevronDown, Receipt, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
 
 export type ExpenseType = "Personal" | "Group";
-
+export type SplitType = "EQUAL" | "EXACT" | "PERCENT";
+export type ExpenseSplitItem = { user_id: number; amount?: number; percentage?: number };
 export type ExpenseFormData = {
   id?: number;
   title: string;
@@ -37,440 +19,162 @@ export type ExpenseFormData = {
   category: string;
   type: ExpenseType;
   group?: string;
-  paidBy: string;
+  groupId?: number;
   date: string;
-  notes?: string;
+  splitType?: SplitType;
+  splitData?: ExpenseSplitItem[];
 };
+type GroupOption = Pick<Group, "id" | "name" | "members">;
 
 interface AddEditExpenseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   expense?: ExpenseFormData | null;
-  onSubmit?: (expense: ExpenseFormData) => void;
+  groups?: GroupOption[];
+  onSubmit?: (expense: ExpenseFormData) => void | Promise<void>;
 }
 
-const groups = [
-  "Pokhara Trip",
-  "Apartment",
-  "College Friends",
-  "Gaming Night",
-];
-
 const categories = [
-  "Food",
-  "Transport",
-  "Travel",
-  "Shopping",
-  "Entertainment",
-  "Bills",
-  "Other",
+  { label: "Food & Dining", value: "FOOD" },
+  { label: "Shopping", value: "SHOPPING" },
+  { label: "Bills & Utilities", value: "UTILITIES" },
+  { label: "Transportation", value: "TRANSPORT" },
+  { label: "Entertainment", value: "ENTERTAINMENT" },
+  { label: "Groceries", value: "GROCERIES" },
+  { label: "Other", value: "OTHER" },
 ];
 
-const paidByOptions = ["You", "Suman", "Ram", "Anisha"];
-
-export function AddEditExpenseDialog({
-  open,
-  onOpenChange,
-  expense,
-  onSubmit,
-}: AddEditExpenseDialogProps) {
+export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], onSubmit }: AddEditExpenseDialogProps) {
   const isEditing = Boolean(expense);
-
-  const [expenseType, setExpenseType] =
-    useState<ExpenseType>("Personal");
-
+  const [expenseType, setExpenseType] = useState<ExpenseType>("Personal");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("Food");
-  const [group, setGroup] = useState("");
-  const [paidBy, setPaidBy] = useState("You");
+  const [category, setCategory] = useState("FOOD");
+  const [groupId, setGroupId] = useState<number | null>(null);
   const [date, setDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [splitType, setSplitType] = useState<SplitType>("EQUAL");
+  const [participants, setParticipants] = useState<number[]>([]);
+  const [splitValues, setSplitValues] = useState<Record<number, string>>({});
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const activeGroup = groups.find((group) => group.id === groupId);
+  const activeMembers = activeGroup?.members ?? [];
+  const splitData = useMemo<ExpenseSplitItem[]>(() => participants.map((user_id) => {
+    const value = Number(splitValues[user_id] ?? 0);
+    if (splitType === "EXACT") return { user_id, amount: value };
+    if (splitType === "PERCENT") return { user_id, percentage: value };
+    return { user_id };
+  }), [participants, splitType, splitValues]);
 
   useEffect(() => {
     if (!open) return;
-
     if (expense) {
       setExpenseType(expense.type);
       setTitle(expense.title);
       setAmount(String(expense.amount));
       setCategory(expense.category);
-      setGroup(expense.group ?? "");
-      setPaidBy(expense.paidBy);
-      setDate(convertDateToInputValue(expense.date));
-      setNotes(expense.notes ?? "");
-      return;
+      setGroupId(expense.groupId ?? null);
+      setDate(toInputDate(expense.date));
+      setSplitType(expense.splitType ?? "EQUAL");
+      const selected = expense.splitData?.map((part) => part.user_id) ?? [];
+      setParticipants(selected);
+      setSplitValues(Object.fromEntries((expense.splitData ?? []).map((part) => [part.user_id, String(part.amount ?? part.percentage ?? "")])));
+    } else {
+      resetForm();
     }
-
-    resetForm();
   }, [open, expense]);
+
+  useEffect(() => {
+    if (!activeGroup) return;
+    setParticipants((current) => current.length ? current.filter((id) => activeGroup.members.some((member) => member.user.id === id)) : activeGroup.members.map((member) => member.user.id));
+  }, [activeGroup]);
 
   const resetForm = () => {
     setExpenseType("Personal");
     setTitle("");
     setAmount("");
-    setCategory("Food");
-    setGroup("");
-    setPaidBy("You");
-    setDate(new Date().toISOString().split("T")[0]);
-    setNotes("");
+    setCategory("FOOD");
+    setGroupId(null);
+    setDate(new Date().toISOString().slice(0, 10));
+    setSplitType("EQUAL");
+    setParticipants([]);
+    setSplitValues({});
+    setValidationError(null);
   };
 
-  const handleSubmit = () => {
-    if (!title.trim() || !amount.trim()) return;
-
-    if (expenseType === "Group" && !group) return;
-
-    const formData: ExpenseFormData = {
-      id: expense?.id,
-      title: title.trim(),
-      amount: Number(amount),
-      category,
-      type: expenseType,
-      group: expenseType === "Group" ? group : undefined,
-      paidBy,
-      date,
-      notes: notes.trim() || undefined,
-    };
-
-    onSubmit?.(formData);
-    onOpenChange(false);
+  const handleSubmit = async () => {
+    const numericAmount = Number(amount);
+    if (!title.trim()) return setValidationError("Enter an expense description.");
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setValidationError("Amount must be greater than zero.");
+    if (expenseType === "Personal" && !date) return setValidationError("Choose an expense date.");
+    if (expenseType === "Group" && !activeGroup) return setValidationError("Select a group.");
+    if (expenseType === "Group" && participants.length === 0) return setValidationError("Select at least one participant.");
+    if (splitType === "EXACT" && Math.abs(splitData.reduce((sum, item) => sum + (item.amount ?? 0), 0) - numericAmount) > 0.001) return setValidationError("Exact shares must add up to the total amount.");
+    if (splitType === "PERCENT" && Math.abs(splitData.reduce((sum, item) => sum + (item.percentage ?? 0), 0) - 100) > 0.001) return setValidationError("Split percentages must total 100%.");
+    setSaving(true);
+    setValidationError(null);
+    try {
+      await onSubmit?.({
+        id: expense?.id,
+        title: title.trim(),
+        amount: numericAmount,
+        category,
+        type: expenseType,
+        group: activeGroup?.name,
+        groupId: activeGroup?.id,
+        date,
+        splitType,
+        splitData: expenseType === "Group" ? splitData : undefined,
+      });
+      onOpenChange(false);
+    } catch (error) {
+      setValidationError(getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpenChange = (value: boolean) => {
-    if (!value) {
-      resetForm();
-    }
-
+    if (!value) resetForm();
     onOpenChange(value);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit expense" : "Add expense"}
-          </DialogTitle>
-
-          <DialogDescription>
-            {isEditing
-              ? "Update the details of this expense."
-              : "Record a personal expense or split an expense with a group."}
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[540px]">
+        <DialogHeader><DialogTitle>{isEditing ? "Edit expense" : "Add expense"}</DialogTitle><DialogDescription>{isEditing ? "Update the details and participants for this expense." : "Record a personal transaction or split a group expense."}</DialogDescription></DialogHeader>
         <div className="space-y-5 py-2">
-          {/* Expense Type */}
-          <div className="space-y-2">
-            <Label>Expense type</Label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setExpenseType("Personal")}
-                className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                  expenseType === "Personal"
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/50"
-                }`}
-              >
-                <div
-                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                    expenseType === "Personal"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  <Receipt className="size-4" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    Personal
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Just for you
-                  </p>
-                </div>
-
-                {expenseType === "Personal" && (
-                  <Check className="ml-auto size-4 text-primary" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setExpenseType("Group")}
-                className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                  expenseType === "Group"
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/50"
-                }`}
-              >
-                <div
-                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                    expenseType === "Group"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  <Users className="size-4" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    Group
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Split with others
-                  </p>
-                </div>
-
-                {expenseType === "Group" && (
-                  <Check className="ml-auto size-4 text-primary" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Title + Amount */}
+          <div className="space-y-2"><Label>Expense type</Label><div className="grid grid-cols-2 gap-2">
+            {(["Personal", "Group"] as const).map((type) => <button key={type} type="button" disabled={isEditing} onClick={() => setExpenseType(type)} className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${expenseType === type ? "border-primary bg-primary/5" : "hover:bg-muted/50"} ${isEditing ? "cursor-not-allowed opacity-60" : ""}`}><div className={`flex size-9 items-center justify-center rounded-lg ${expenseType === type ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{type === "Personal" ? <Receipt className="size-4" /> : <Users className="size-4" />}</div><div><p className="text-sm font-medium">{type}</p><p className="text-xs text-muted-foreground">{type === "Personal" ? "Only for you" : "Split with group members"}</p></div>{expenseType === type && <Check className="ml-auto size-4 text-primary" />}</button>)}
+          </div></div>
           <div className="grid gap-4 sm:grid-cols-[1fr_150px]">
-            <div className="space-y-2">
-              <Label htmlFor="expense-title">
-                Expense name
-              </Label>
-
-              <Input
-                id="expense-title"
-                value={title}
-                onChange={(event) =>
-                  setTitle(event.target.value)
-                }
-                placeholder="e.g. Dinner"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="expense-amount">
-                Amount
-              </Label>
-
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  Rs.
-                </span>
-
-                <Input
-                  id="expense-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={(event) =>
-                    setAmount(event.target.value)
-                  }
-                  placeholder="0"
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            <div className="space-y-2"><Label htmlFor="expense-title">Description</Label><Input id="expense-title" maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Dinner" autoFocus /></div>
+            <div className="space-y-2"><Label htmlFor="expense-amount">Amount</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rs.</span><Input id="expense-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="pl-10" /></div></div>
           </div>
-
-          {/* Group */}
-          {expenseType === "Group" && (
-            <div className="space-y-2">
-              <Label>Group</Label>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal"
-                  >
-                    <span
-                      className={
-                        group
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {group || "Select a group"}
-                    </span>
-
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent
-                  align="start"
-                  className="w-[--radix-dropdown-menu-trigger-width]"
-                >
-                  {groups.map((groupName) => (
-                    <DropdownMenuItem
-                      key={groupName}
-                      onClick={() => setGroup(groupName)}
-                    >
-                      {groupName}
-
-                      {group === groupName && (
-                        <Check className="ml-auto size-4" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
-
-          {/* Category + Paid By */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Category</Label>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal"
-                  >
-                    {category}
-
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent
-                  align="start"
-                  className="w-[--radix-dropdown-menu-trigger-width]"
-                >
-                  {categories.map((categoryName) => (
-                    <DropdownMenuItem
-                      key={categoryName}
-                      onClick={() => setCategory(categoryName)}
-                    >
-                      {categoryName}
-
-                      {category === categoryName && (
-                        <Check className="ml-auto size-4" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Paid by</Label>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal"
-                  >
-                    {paidBy}
-
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent
-                  align="start"
-                  className="w-[--radix-dropdown-menu-trigger-width]"
-                >
-                  {paidByOptions.map((person) => (
-                    <DropdownMenuItem
-                      key={person}
-                      onClick={() => setPaidBy(person)}
-                    >
-                      {person}
-
-                      {paidBy === person && (
-                        <Check className="ml-auto size-4" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Date */}
-          <div className="space-y-2">
-            <Label htmlFor="expense-date">
-              Date
-            </Label>
-
-            <div className="relative">
-              <CalendarDays className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-              <Input
-                id="expense-date"
-                type="date"
-                value={date}
-                onChange={(event) =>
-                  setDate(event.target.value)
-                }
-                className="pl-9"
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="expense-notes">
-              Notes
-              <span className="ml-1 text-muted-foreground">
-                (optional)
-              </span>
-            </Label>
-
-            <Textarea
-              id="expense-notes"
-              value={notes}
-              onChange={(event) =>
-                setNotes(event.target.value)
-              }
-              placeholder="Add a note about this expense..."
-              className="min-h-[80px] resize-none"
-            />
-          </div>
+          {expenseType === "Personal" ? <>
+            <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Category</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{categories.find((item) => item.value === category)?.label}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">{categories.map((item) => <DropdownMenuItem key={item.value} onClick={() => setCategory(item.value)}>{item.label}{category === item.value && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
+              <div className="space-y-2"><Label htmlFor="expense-date">Date</Label><div className="relative"><CalendarDays className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="expense-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="pl-9" /></div></div></div>
+          </> : <>
+            <div className="space-y-2"><Label>Group</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{activeGroup?.name ?? "Select a group"}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">{groups.map((group) => <DropdownMenuItem key={group.id} onClick={() => setGroupId(group.id)}>{group.name}{groupId === group.id && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
+            {activeGroup && <div className="space-y-3 rounded-lg border p-4"><div className="flex items-center justify-between gap-3"><Label>Participants</Label><select className="h-9 rounded-md border bg-background px-2 text-sm" value={splitType} onChange={(event) => setSplitType(event.target.value as SplitType)}><option value="EQUAL">Equal split</option><option value="EXACT">Custom amounts</option><option value="PERCENT">Percent split</option></select></div>
+              {activeMembers.map((member) => {
+                const userId = member.user.id;
+                const included = participants.includes(userId);
+                return <div key={member.id} className="flex items-center gap-3"><input type="checkbox" checked={included} onChange={(event) => setParticipants((current) => event.target.checked ? [...current, userId] : current.filter((id) => id !== userId))} aria-label={`Include ${member.user.username}`} /><span className="min-w-0 flex-1 truncate text-sm">@{member.user.username}{member.role === "owner" ? " (owner)" : ""}</span>{included && splitType !== "EQUAL" && <Input aria-label={`${splitType === "EXACT" ? "Share amount" : "Share percentage"} for ${member.user.username}`} className="h-8 w-28" type="number" min="0" step="0.01" value={splitValues[userId] ?? ""} onChange={(event) => setSplitValues((values) => ({ ...values, [userId]: event.target.value }))} placeholder={splitType === "EXACT" ? "Rs." : "%"} />}</div>;
+              })}
+              <p className="text-xs text-muted-foreground">{splitType === "EQUAL" ? "Equal amounts are rounded to cents by the server." : splitType === "EXACT" ? "Custom shares must equal the total amount." : "Custom percentages must total 100%."}</p>
+            </div>}
+          </>}
+          {validationError && <p role="alert" className="text-sm text-destructive">{validationError}</p>}
         </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              !title.trim() ||
-              !amount.trim() ||
-              (expenseType === "Group" && !group)
-            }
-          >
-            {isEditing ? "Save Changes" : "Add Expense"}
-          </Button>
-        </DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0"><Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>Cancel</Button><Button onClick={() => void handleSubmit()} disabled={saving || !title.trim() || !amount.trim() || (expenseType === "Group" && (!groupId || participants.length === 0))}>{saving ? "Saving..." : isEditing ? "Save Changes" : "Add Expense"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function convertDateToInputValue(date: string) {
-  const parsed = new Date(date);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return new Date().toISOString().split("T")[0];
-  }
-
-  return parsed.toISOString().split("T")[0];
+function toInputDate(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10);
 }

@@ -66,7 +66,7 @@ function NotFoundContent() {
           className="text-lg text-muted-foreground mb-8"
           variants={itemVariants}
         >
-          Oops! It looks like the page you are looking for doesn't exist.
+          Oops! It looks like the page you are looking for doesn&apos;t exist.
         </motion.p>
 
         <motion.div variants={itemVariants}>

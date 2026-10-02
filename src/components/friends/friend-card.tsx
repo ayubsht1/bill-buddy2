@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, MoreHorizontal } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +14,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { apiDelete, getApiErrorMessage } from "@/lib/api/billbuddy";
 
 export type Friend = {
   id: number;
@@ -24,11 +35,28 @@ export type Friend = {
 
 interface FriendCardProps {
   friend: Friend;
+  onRemoved?: () => void | Promise<void>;
 }
 
-export function FriendCard({ friend }: FriendCardProps) {
+export function FriendCard({ friend, onRemoved }: FriendCardProps) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const isOwed = friend.status === "owed";
   const isOwe = friend.status === "owe";
+
+  const removeFriend = async () => {
+    setRemoving(true);
+    try {
+      await apiDelete(`/friends/${friend.id}/remove/`);
+      toast.success(`${friend.name} was removed from your friends.`);
+      setConfirmOpen(false);
+      await onRemoved?.();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center">
@@ -117,20 +145,26 @@ export function FriendCard({ friend }: FriendCardProps) {
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem>
-                Send message
-              </DropdownMenuItem>
-
-              <DropdownMenuItem>
-                Add expense
-              </DropdownMenuItem>
-
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
                 Remove friend
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove {friend.name}?</DialogTitle>
+              <DialogDescription>This removes the friendship. Shared group expenses will remain unchanged.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button variant="destructive" disabled={removing} onClick={() => void removeFriend()}>
+                {removing ? "Removing..." : "Remove friend"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
