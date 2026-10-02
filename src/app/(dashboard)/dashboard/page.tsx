@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, PiggyBank, RefreshCw, Sparkles, Wallet } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, BadgeCheck, Lightbulb, PiggyBank, RefreshCw, Sparkles, Wallet } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ export default function DashboardPage() {
     }));
   }, [analytics]);
 
-  const history = analytics?.monthly_history ?? [];
+  const history = useMemo(() => analytics?.monthly_history ?? [], [analytics]);
   const summary = analytics?.summary;
   const savingsRate = summary && summary.total_personal_income_this_month > 0
     ? Math.max(0, (summary.net_personal_savings / summary.total_personal_income_this_month) * 100)
@@ -75,57 +75,152 @@ export default function DashboardPage() {
   const groupStatus = summary?.balance_status === "YOU_ARE_OWED" ? "Owed to you" : summary?.balance_status === "OWED_MONEY" ? "You owe" : "Settled";
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1><p className="mt-1 text-sm text-muted-foreground">Your monthly cash flow and group balance at a glance.</p></div><Button variant="outline" size="sm" className="gap-2" disabled={analyticsLoading} onClick={() => void loadAnalytics()}><RefreshCw className={`size-4 ${analyticsLoading ? "animate-spin" : ""}`} /> Refresh</Button></div>
+    <div className="relative isolate mx-auto w-full max-w-7xl space-y-7">
+      <div className="pointer-events-none absolute -right-24 -top-28 -z-10 size-80 rounded-full bg-primary/10 blur-3xl" />
 
-      <Card className="relative overflow-hidden border-primary/20 bg-card">
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3"><div className="rounded-xl bg-primary p-2.5 text-primary-foreground"><Sparkles className="size-5" /></div><div><CardTitle className="text-base">BillBuddy AI Coach</CardTitle><CardDescription className="mt-1">Recommendations based on your current financial activity.</CardDescription></div></div>
-          <Button variant="outline" size="sm" className="gap-2" disabled={insightsLoading} onClick={() => void loadInsights()}><RefreshCw className={`size-3.5 ${insightsLoading ? "animate-spin" : ""}`} /> Retry insights</Button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Your money, in focus</p>
+          <h1 className="text-3xl font-bold tracking-[-0.035em] sm:text-4xl">Dashboard</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Your monthly cash flow and group balance at a glance.</p>
+        </div>
+        <Button variant="outline" size="sm" className="h-10 gap-2 rounded-xl bg-background/80 px-4 shadow-sm" disabled={analyticsLoading} onClick={() => void loadAnalytics()}>
+          <RefreshCw className={`size-4 ${analyticsLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      <Card className="relative overflow-hidden rounded-2xl border-primary/20 bg-gradient-to-br from-primary/[0.11] via-card to-sky-500/[0.06] shadow-md shadow-primary/5">
+        <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" />
+        <CardHeader className="relative flex flex-row flex-wrap items-start justify-between gap-4 pb-4">
+          <div className="flex items-start gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <Sparkles className="size-5" />
+            </div>
+            <div>
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <CardTitle className="text-lg tracking-tight">BillBuddy AI Coach</CardTitle>
+                <Badge className="gap-1 border-primary/15 bg-primary/10 text-primary hover:bg-primary/10"><BadgeCheck />Personalized</Badge>
+              </div>
+              <CardDescription>Recommendations based on your current financial activity.</CardDescription>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2 rounded-xl bg-background/70" disabled={insightsLoading} onClick={() => void loadInsights()}>
+            <RefreshCw className={`size-3.5 ${insightsLoading ? "animate-spin" : ""}`} />
+            Retry insights
+          </Button>
         </CardHeader>
-        <CardContent>
-          {insightsLoading ? <div className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-4/5" /><Skeleton className="h-4 w-3/5" /></div> :
-            insightsError ? <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-destructive">{insightsError}</p><Button variant="outline" size="sm" onClick={() => void loadInsights()}>Try again</Button></div> :
-            insights.length ? <ul className="space-y-2">{insights.map((insight, index) => <li key={`${index}-${insight}`} className="flex gap-2 text-sm leading-relaxed"><span className="mt-0.5 text-primary">•</span><span>{insight}</span></li>)}</ul> :
-            <p className="text-sm text-muted-foreground">No recommendations are available yet. Add transactions and try again.</p>}
+        <CardContent className="relative">
+          {insightsLoading ? (
+            <div className="space-y-3 rounded-xl border border-primary/10 bg-background/55 p-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-3/5" />
+            </div>
+          ) : insightsError ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-background/55 p-4">
+              <p className="text-sm text-destructive">{insightsError}</p>
+              <Button variant="outline" size="sm" onClick={() => void loadInsights()}>Try again</Button>
+            </div>
+          ) : insights.length ? (
+            <ul className="grid gap-3 md:grid-cols-2">
+              {insights.map((insight, index) => (
+                <li key={`${index}-${insight}`} className="flex gap-3 rounded-xl border border-primary/10 bg-background/60 p-4 text-sm leading-relaxed shadow-sm shadow-primary/[0.03]">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Lightbulb className="size-4" /></span>
+                  <span className="pt-0.5">{insight}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-xl border border-primary/10 bg-background/55 p-4 text-sm text-muted-foreground">No recommendations are available yet. Add transactions and try again.</p>
+          )}
         </CardContent>
       </Card>
 
-      {analyticsError && <Card className="border-destructive/40"><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><p className="text-sm text-destructive">{analyticsError}</p><Button variant="outline" size="sm" onClick={() => void loadAnalytics()}>Retry dashboard data</Button></CardContent></Card>}
+      {analyticsError && (
+        <Card className="rounded-2xl border-destructive/40">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-destructive">{analyticsError}</p>
+            <Button variant="outline" size="sm" onClick={() => void loadAnalytics()}>Retry dashboard data</Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Group settlements" value={summary ? money(Math.abs(summary.net_group_balance)) : "—"} detail={summary ? groupStatus : "Balances across groups"} icon={Wallet} loading={analyticsLoading} />
         <MetricCard title="Monthly inflow" value={summary ? money(summary.total_personal_income_this_month) : "—"} detail="Personal income this month" icon={ArrowDownLeft} tone="positive" loading={analyticsLoading} />
         <MetricCard title="Monthly outflow" value={summary ? money(summary.total_personal_spent_this_month) : "—"} detail="Personal expenses this month" icon={ArrowUpRight} tone="negative" loading={analyticsLoading} />
-        <MetricCard title="Net savings" value={summary ? money(summary.net_personal_savings) : "—"} detail={`${savingsRate.toFixed(1)}% of recorded income`} icon={PiggyBank} loading={analyticsLoading} />
+        <MetricCard title="Net savings" value={summary ? money(summary.net_personal_savings) : "—"} detail={`${savingsRate.toFixed(1)}% of recorded income`} icon={PiggyBank} tone="savings" loading={analyticsLoading} />
       </div>
 
-      <div className="grid items-stretch gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Expense category breakdown</CardTitle><CardDescription>Personal expenses recorded this month.</CardDescription></CardHeader>
-          <CardContent>
-            {analyticsLoading ? <Skeleton className="h-64 w-full" /> : categories.length ? <>
-              <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categories} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={3}>{categories.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => money(Number(value))} /></PieChart></ResponsiveContainer></div>
-              <div className="mt-4 space-y-3 border-t pt-4">{categories.map((category) => <div key={category.name} className="flex items-center gap-3 text-sm"><span className="size-2.5 rounded-full" style={{ backgroundColor: category.color }} /><span className="min-w-0 flex-1 truncate">{category.name}</span><span className="text-xs text-muted-foreground">{category.pct.toFixed(0)}%</span><span className="font-medium">{money(category.value)}</span></div>)}</div>
-            </> : <EmptyChart message="No personal expenses recorded this month." />}
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-3">
-          <CardHeader><CardTitle className="text-base">Inflow vs. outflow</CardTitle><CardDescription>Monthly income and expenses, using recorded personal transactions.</CardDescription></CardHeader>
-          <CardContent>
-            {analyticsLoading ? <Skeleton className="h-[340px] w-full" /> : history.length ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...history].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => money(Number(value))} /><Bar dataKey="income" name="Inflow" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="expense" name="Outflow" fill="#f43f5e" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="Add transactions to see monthly cash flow." />}
-          </CardContent>
-        </Card>
+      <div className="grid items-stretch gap-5 lg:grid-cols-5">
+        <CategoryBreakdown categories={categories} loading={analyticsLoading} />
+        <CashFlowChart history={history} loading={analyticsLoading} />
       </div>
-      {analytics && <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">Group balance: {groupStatus}</Badge><Badge variant="outline">Analytics reflect backend personal transaction data</Badge></div>}
+      {analytics && <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4"><Badge variant="outline" className="rounded-lg bg-background/70 px-3 py-1">Group balance: {groupStatus}</Badge><Badge variant="outline" className="rounded-lg bg-background/70 px-3 py-1">Analytics reflect backend personal transaction data</Badge></div>}
     </div>
   );
 }
 
-function MetricCard({ title, value, detail, icon: Icon, tone, loading }: { title: string; value: string; detail: string; icon: typeof Wallet; tone?: "positive" | "negative"; loading: boolean }) {
-  return <Card><CardContent className="flex items-start justify-between p-5"><div className="min-w-0"><p className="text-sm text-muted-foreground">{title}</p>{loading ? <Skeleton className="mt-2 h-8 w-32" /> : <p className={`mt-2 truncate text-2xl font-semibold tracking-tight ${tone === "positive" ? "text-emerald-500" : tone === "negative" ? "text-rose-500" : ""}`}>{value}</p>}<p className="mt-1 text-xs text-muted-foreground">{detail}</p></div><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></CardContent></Card>;
-}
+const MetricCard = memo(function MetricCard({ title, value, detail, icon: Icon, tone, loading }: { title: string; value: string; detail: string; icon: typeof Wallet; tone?: "positive" | "negative" | "savings"; loading: boolean }) {
+  const toneStyles = tone === "positive"
+    ? { icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", value: "text-emerald-600 dark:text-emerald-400" }
+    : tone === "negative"
+      ? { icon: "bg-rose-500/10 text-rose-600 dark:text-rose-400", value: "text-rose-600 dark:text-rose-400" }
+      : tone === "savings"
+        ? { icon: "bg-sky-500/10 text-sky-600 dark:text-sky-400", value: "text-sky-600 dark:text-sky-400" }
+        : { icon: "bg-primary/10 text-primary", value: "" };
+
+  return (
+    <Card className="group rounded-2xl border-border/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md">
+      <CardContent className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          {loading ? <Skeleton className="mt-3 h-8 w-32" /> : <p className={`mt-3 truncate text-2xl font-semibold tracking-tight tabular-nums ${toneStyles.value}`}>{value}</p>}
+          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
+        </div>
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${toneStyles.icon}`}><Icon className="size-[18px]" /></div>
+      </CardContent>
+    </Card>
+  );
+});
+
+type Category = { name: string; value: number; color: string; pct: number };
+type MonthlyRecord = DashboardAnalytics["monthly_history"][number];
+
+const CategoryBreakdown = memo(function CategoryBreakdown({ categories, loading }: { categories: Category[]; loading: boolean }) {
+  return (
+    <Card className="rounded-2xl border-border/70 shadow-sm transition-shadow hover:shadow-md lg:col-span-2">
+      <CardHeader className="pb-2">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Spending habits</p>
+        <CardTitle className="text-base tracking-tight">Expense category breakdown</CardTitle>
+        <CardDescription>Personal expenses recorded this month.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? <Skeleton className="h-64 w-full" /> : categories.length ? <>
+          <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categories} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={3}>{categories.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => money(Number(value))} /></PieChart></ResponsiveContainer></div>
+          <div className="mt-4 space-y-3 border-t pt-4">{categories.map((category) => <div key={category.name} className="flex items-center gap-3 text-sm"><span className="size-2.5 rounded-full ring-4 ring-background" style={{ backgroundColor: category.color }} /><span className="min-w-0 flex-1 truncate text-muted-foreground">{category.name}</span><span className="text-xs text-muted-foreground">{category.pct.toFixed(0)}%</span><span className="font-medium tabular-nums">{money(category.value)}</span></div>)}</div>
+        </> : <EmptyChart message="No personal expenses recorded this month." />}
+      </CardContent>
+    </Card>
+  );
+});
+
+const CashFlowChart = memo(function CashFlowChart({ history, loading }: { history: MonthlyRecord[]; loading: boolean }) {
+  return (
+    <Card className="rounded-2xl border-border/70 shadow-sm transition-shadow hover:shadow-md lg:col-span-3">
+      <CardHeader className="pb-2">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Monthly overview</p>
+        <CardTitle className="text-base tracking-tight">Inflow vs. outflow</CardTitle>
+        <CardDescription>Monthly income and expenses, using recorded personal transactions.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? <Skeleton className="h-[340px] w-full" /> : history.length ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...history].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => money(Number(value))} /><Bar dataKey="income" name="Inflow" fill="#10b981" radius={[5, 5, 0, 0]} /><Bar dataKey="expense" name="Outflow" fill="#f43f5e" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="Add transactions to see monthly cash flow." />}
+      </CardContent>
+    </Card>
+  );
+});
 
 function EmptyChart({ message }: { message: string }) {
-  return <div className="flex h-64 items-center justify-center rounded-lg border border-dashed px-6 text-center text-sm text-muted-foreground">{message}</div>;
+  return <div className="flex h-64 items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 text-center text-sm text-muted-foreground">{message}</div>;
 }

@@ -15,11 +15,11 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="dashboard-theme">
       <Toaster position="top-right" />
       <AppSidebar />
 
-      <SidebarInset className="relative min-h-svh overflow-y-auto bg-muted/10">
+      <SidebarInset className="dashboard-inset relative min-h-svh overflow-y-auto bg-muted/10">
         <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center bg-background/80 backdrop-blur-md transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex w-full items-center justify-between gap-3 px-4 sm:px-6">
             {/* Left section: Sidebar trigger & breadcrumbs */}
