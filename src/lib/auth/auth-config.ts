@@ -162,17 +162,14 @@ export const authOptions: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    async signIn({ account, profile, user }) {
+    async signIn({ account, user }) {
       if (account?.provider !== "google") return true;
 
       try {
         const response = await axios.post<DjangoLoginResponse>(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/google-login/`,
           {
-            email: profile?.email,
-            picture: profile?.picture,
-            given_name: profile?.given_name,
-            family_name: profile?.family_name,
+            id_token: account.id_token,
           },
           { headers: { "Content-Type": "application/json" } },
         );
