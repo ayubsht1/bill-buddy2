@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useSignOut } from "@/hooks/use-signout";
+import { resolveProfilePictureUrl } from "@/lib/api/billbuddy";
 import {
   Avatar,
   AvatarFallback,
@@ -37,6 +38,7 @@ export function UserDropdown() {
 
   const displayName = username || name || email || "User";
   const initials = displayName.charAt(0).toUpperCase();
+  const pictureUrl = resolveProfilePictureUrl(image);
 
   return (
     <DropdownMenu modal={false}>
@@ -54,16 +56,15 @@ export function UserDropdown() {
           "
         >
           <Avatar className="h-8 w-8 border border-border/60">
-            {image ? (
+            {pictureUrl && (
               <AvatarImage
-                src={image}
+                src={pictureUrl}
                 alt={displayName}
               />
-            ) : (
-              <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-                {initials}
-              </AvatarFallback>
             )}
+            <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+              {initials}
+            </AvatarFallback>
           </Avatar>
 
           <div className="hidden min-w-0 flex-col items-start md:flex">
@@ -99,16 +100,15 @@ export function UserDropdown() {
         <DropdownMenuLabel className="p-0">
           <div className="flex items-center gap-3 rounded-lg px-3 py-3">
             <Avatar className="h-10 w-10 border border-border/60">
-              {image ? (
+              {pictureUrl && (
                 <AvatarImage
-                  src={image}
+                  src={pictureUrl}
                   alt={displayName}
                 />
-              ) : (
-                <AvatarFallback className="bg-primary/10 font-semibold text-primary">
-                  {initials}
-                </AvatarFallback>
               )}
+              <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+                {initials}
+              </AvatarFallback>
             </Avatar>
 
             <div className="min-w-0 flex-1">

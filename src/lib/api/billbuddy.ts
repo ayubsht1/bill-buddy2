@@ -87,6 +87,9 @@ export interface GroupMessage {
   sender_username: string;
   message: string;
   timestamp?: string;
+  attachment_url?: string | null;
+  attachment_name?: string;
+  attachment_type?: string | null;
   is_system: boolean;
   is_forwarded: boolean;
   is_pinned: boolean;
@@ -144,6 +147,22 @@ export interface UserProfile {
   profilePicture?: string | null;
   is_active: boolean;
   has_password: boolean;
+}
+
+export function resolveProfilePictureUrl(picture: string | null | undefined): string | undefined {
+  if (!picture) return undefined;
+  if (/^https?:\/\//i.test(picture)) return picture;
+
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
+  const apiRoot = configuredUrl.replace(/\/+$/, "").replace(/\/api$/i, "");
+  const mediaPath = picture.startsWith("/")
+    ? picture
+    : `/media/${picture.replace(/^\/+/, "")}`;
+
+  return new URL(mediaPath, `${apiRoot}/`).toString();
 }
 
 export interface DashboardAnalytics {

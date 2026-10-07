@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import {
   Bell,
@@ -97,6 +98,7 @@ export default function SettingsPage() {
 }
 
 function ProfileSettings({ profile, loading, error, onRetry, onUpdated }: { profile: UserProfile | null; loading: boolean; error: string | null; onRetry: () => void; onUpdated: (profile: UserProfile) => void }) {
+  const { update: updateSession } = useSession();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
@@ -132,6 +134,7 @@ function ProfileSettings({ profile, loading, error, onRetry, onUpdated }: { prof
         updated = await apiPatch<UserProfile>("/profile/", { firstName: firstName.trim(), lastName: lastName.trim(), username: username.trim() });
       }
       onUpdated(updated);
+      await updateSession();
       setPicture(null);
       toast.success("Profile updated.");
     } catch (requestError) {

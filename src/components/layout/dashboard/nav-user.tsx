@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { resolveProfilePictureUrl } from "@/lib/api/billbuddy"
 
 interface NavUserProps {
   user?: {
@@ -43,6 +44,7 @@ export function NavUser({ user: propUser }: NavUserProps) {
     email: session?.user?.email || propUser?.email || "user@billbuddy.com",
     avatar: session?.user?.image || propUser?.avatar || "",
   }
+  const pictureUrl = resolveProfilePictureUrl(user.avatar);
 
   // Get initials for avatar fallback (e.g., "Ayub Shrestha" -> "AS")
   const getInitials = (name: string) => {
@@ -62,7 +64,7 @@ export function NavUser({ user: propUser }: NavUserProps) {
           className="relative h-9 flex items-center gap-2 px-2 rounded-lg hover:bg-accent focus-visible:ring-0"
         >
           <Avatar className="h-8 w-8 rounded-lg border">
-            <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
+            <AvatarImage src={pictureUrl} alt={user.name} />
             <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
               {getInitials(user.name)}
             </AvatarFallback>
@@ -82,7 +84,7 @@ export function NavUser({ user: propUser }: NavUserProps) {
         <DropdownMenuLabel className="p-0 font-normal">
           <div className="flex items-center gap-2 px-2 py-1.5 text-left text-sm">
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
+              <AvatarImage src={pictureUrl} alt={user.name} />
               <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
                 {getInitials(user.name)}
               </AvatarFallback>

@@ -189,7 +189,7 @@ export const authOptions: NextAuthConfig = {
         return "/auth/login?error=GoogleBackendSyncFailed";
       }
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.email = user.email || "";
@@ -198,6 +198,25 @@ export const authOptions: NextAuthConfig = {
         token.accessToken = user.accessToken || "";
         token.refreshToken = user.refreshToken || "";
         return token;
+      }
+
+      if (trigger === "update" && token.accessToken) {
+        try {
+          const configuredUrl =
+            process.env.NEXT_PUBLIC_API_BASE_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            "http://localhost:8000";
+          const apiRoot = configuredUrl.replace(/\/+$/, "").replace(/\/api$/i, "");
+          const response = await axios.get(`${apiRoot}/api/profile/`, {
+            headers: { Authorization: `Bearer ${token.accessToken}` },
+          });
+          if (!response.data.success) {
+            throw new Error(response.data.message || "Profile refresh failed.");
+          }
+          token.picture = response.data.data.profilePicture || "";
+        } catch (error) {
+          console.error("Failed to refresh profile picture", error);
+        }
       }
 
       return isTokenValid(token.accessToken)

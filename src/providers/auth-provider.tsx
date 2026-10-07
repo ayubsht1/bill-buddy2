@@ -1,10 +1,11 @@
 "use client";
 
 import { SessionProvider, useSession, signOut } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status, update } = useSession();
+  const profileRefreshStarted = useRef(false);
 
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
@@ -13,6 +14,17 @@ function SessionGuard({ children }: { children: React.ReactNode }) {
       });
     }
   }, [session]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      profileRefreshStarted.current = false;
+      return;
+    }
+    if (status !== "authenticated" || profileRefreshStarted.current) return;
+
+    profileRefreshStarted.current = true;
+    void update();
+  }, [status, update]);
 
   return <>{children}</>;
 }
