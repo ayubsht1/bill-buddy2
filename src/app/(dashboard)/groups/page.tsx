@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { ArrowRight, CalendarDays, Plus, Search, Users, Wallet } from "lucide-react";
 import { CreateGroupDialog } from "@/components/groups/create-group-dialog";
@@ -89,7 +89,7 @@ function SummaryCard({ title, value, description, icon: Icon }: { title: string;
   return <Card><CardContent className="flex items-start justify-between p-5"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></CardContent></Card>;
 }
 
-function GroupRow({ group }: { group: GroupSummary }) {
+const GroupRow = memo(function GroupRow({ group }: { group: GroupSummary }) {
   const amountOwe = Math.max(0, -group.netBalance);
   const amountOwed = Math.max(0, group.netBalance);
   return (
@@ -107,4 +107,4 @@ function GroupRow({ group }: { group: GroupSummary }) {
       <Button variant="outline" size="sm" className="gap-2 sm:ml-2" asChild><Link href={`/groups/${group.id}`}>Open<ArrowRight className="size-3.5" /></Link></Button>
     </div>
   );
-}
+});

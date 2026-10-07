@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, CalendarDays, MoreHorizontal, Plus, Receipt, Search, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
 import { AddEditExpenseDialog, type ExpenseFormData } from "@/components/expenses/add-edit-expense-dialog";
@@ -95,6 +95,14 @@ export default function ExpensesPage() {
   const groupSpend = thisMonth.filter((expense) => expense.type === "Group").reduce((sum, expense) => sum + expense.amount, 0);
 
   const openAdd = () => { setSelectedExpense(null); setDialogOpen(true); };
+  const openEdit = useCallback((expense: ExpenseRowModel) => {
+    setSelectedExpense(expense);
+    setDialogOpen(true);
+  }, []);
+  const requestDelete = useCallback((expense: ExpenseRowModel) => {
+    setDeleteTarget(expense);
+  }, []);
+
   const saveExpense = async (form: ExpenseFormData) => {
     if (form.type === "Personal") {
       const body = {
@@ -141,7 +149,7 @@ export default function ExpensesPage() {
         <CardContent className="p-0">
           {loading ? <div className="space-y-3 p-5">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-20 w-full" />)}</div> :
             error ? <div className="p-8 text-center"><p className="text-sm text-destructive">{error}</p><Button variant="outline" className="mt-4" onClick={() => void loadExpenses()}>Retry</Button></div> :
-            filteredExpenses.length ? <div className="divide-y">{filteredExpenses.map((expense) => <ExpenseRow key={`${expense.type}-${expense.id}`} expense={expense} onEdit={() => { setSelectedExpense(expense); setDialogOpen(true); }} onDelete={() => setDeleteTarget(expense)} />)}</div> :
+            filteredExpenses.length ? <div className="divide-y">{filteredExpenses.map((expense) => <ExpenseRow key={`${expense.type}-${expense.id}`} expense={expense} onEdit={openEdit} onDelete={requestDelete} />)}</div> :
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center"><div className="flex size-12 items-center justify-center rounded-full bg-muted"><Receipt className="size-5 text-muted-foreground" /></div><h3 className="mt-4 text-sm font-semibold">{search ? "No expenses found" : "No expenses yet"}</h3><p className="mt-1 max-w-sm text-sm text-muted-foreground">{search ? "Try another search or filter." : "Add a personal expense or a shared group expense to get started."}</p>{!search && <Button className="mt-5 gap-2" onClick={openAdd}><Plus className="size-4" /> Add Expense</Button>}</div>}
         </CardContent>
       </Card>
@@ -155,7 +163,7 @@ function SummaryCard({ title, value, description, icon: Icon }: { title: string;
   return <Card><CardContent className="flex items-start justify-between p-5"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></CardContent></Card>;
 }
 
-function ExpenseRow({ expense, onEdit, onDelete }: { expense: ExpenseRowModel; onEdit: () => void; onDelete: () => void }) {
+const ExpenseRow = memo(function ExpenseRow({ expense, onEdit, onDelete }: { expense: ExpenseRowModel; onEdit: (expense: ExpenseRowModel) => void; onDelete: (expense: ExpenseRowModel) => void }) {
   const category = displayCategory[expense.category] ?? expense.category;
-  return <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted"><Receipt className="size-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium">{expense.title}</p><Badge variant={expense.type === "Group" ? "secondary" : "outline"}>{expense.type}</Badge></div><div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground"><span>{category}</span>{expense.group && <><span>·</span><span>{expense.group}</span></>}<span>·</span><span className="flex items-center gap-1"><CalendarDays className="size-3" />{formatApiDate(expense.date)}</span><span>·</span><span>Paid by {expense.paidBy}</span></div>{expense.shareSummary && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{expense.shareSummary}</p>}</div><p className="shrink-0 text-sm font-semibold">Rs. {expense.amount.toLocaleString()}</p><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={onEdit}>Edit expense</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={onDelete}>Delete expense</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>;
-}
+  return <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted"><Receipt className="size-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium">{expense.title}</p><Badge variant={expense.type === "Group" ? "secondary" : "outline"}>{expense.type}</Badge></div><div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground"><span>{category}</span>{expense.group && <><span>·</span><span>{expense.group}</span></>}<span>·</span><span className="flex items-center gap-1"><CalendarDays className="size-3" />{formatApiDate(expense.date)}</span><span>·</span><span>Paid by {expense.paidBy}</span></div>{expense.shareSummary && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{expense.shareSummary}</p>}</div><p className="shrink-0 text-sm font-semibold">Rs. {expense.amount.toLocaleString()}</p><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => onEdit(expense)}>Edit expense</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => onDelete(expense)}>Delete expense</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>;
+});

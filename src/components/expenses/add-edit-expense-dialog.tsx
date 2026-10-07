@@ -31,6 +31,7 @@ interface AddEditExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
   expense?: ExpenseFormData | null;
   groups?: GroupOption[];
+  defaultGroupId?: number;
   onSubmit?: (expense: ExpenseFormData) => void | Promise<void>;
 }
 
@@ -44,7 +45,7 @@ const categories = [
   { label: "Other", value: "OTHER" },
 ];
 
-export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], onSubmit }: AddEditExpenseDialogProps) {
+export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], defaultGroupId, onSubmit }: AddEditExpenseDialogProps) {
   const isEditing = Boolean(expense);
   const [expenseType, setExpenseType] = useState<ExpenseType>("Personal");
   const [title, setTitle] = useState("");
@@ -82,8 +83,12 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
       setSplitValues(Object.fromEntries((expense.splitData ?? []).map((part) => [part.user_id, String(part.amount ?? part.percentage ?? "")])));
     } else {
       resetForm();
+      if (defaultGroupId) {
+        setExpenseType("Group");
+        setGroupId(defaultGroupId);
+      }
     }
-  }, [open, expense]);
+  }, [open, expense, defaultGroupId]);
 
   useEffect(() => {
     if (!activeGroup) return;

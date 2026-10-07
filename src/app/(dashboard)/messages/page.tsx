@@ -1,17 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, MessageCircle, MoreHorizontal, RefreshCw, Search, Send, Users } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, MoreHorizontal, Pencil, Plus, Receipt, RefreshCw, Search, Send, Trash2, Users } from "lucide-react";
 import toast from "react-hot-toast";
+import { AddEditExpenseDialog, type ExpenseFormData } from "@/components/expenses/add-edit-expense-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { apiGet, apiPost, formatApiDate, getApiErrorMessage, type Group, type GroupMessage } from "@/lib/api/billbuddy";
+import { apiDelete, apiGet, apiPatch, apiPost, formatApiDate, getApiErrorMessage, type Group, type GroupExpense, type GroupMessage } from "@/lib/api/billbuddy";
 
 const LAST_READ_KEY = "billbuddy-group-chat-last-read";
 
@@ -19,16 +21,28 @@ export default function MessagesPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const username = session?.user?.username ?? "";
+  const currentUserId = Number(session?.user?.id);
   const [groups, setGroups] = useState<Group[]>([]);
   const [messages, setMessages] = useState<Record<number, GroupMessage[]>>({});
+  const [expenses, setExpenses] = useState<Record<number, GroupExpense[]>>({});
   const [unread, setUnread] = useState<Record<number, number>>({});
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedIdRef = useRef<number | null>(null);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conversationError, setConversationError] = useState<string | null>(null);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseFormData | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GroupExpense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState(false);
   const messageEnd = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const refreshMessages = useCallback(async (groupList: Group[]) => {
     const stored = JSON.parse(window.localStorage.getItem(LAST_READ_KEY) ?? "{}") as Record<string, string>;
@@ -36,16 +50,54 @@ export default function MessagesPage() {
       groupId: group.id,
       messages: await apiGet<GroupMessage[]>(`/groups/${group.id}/chat/`),
     })));
-    const nextMessages: Record<number, GroupMessage[]> = {};
-    const nextUnread: Record<number, number> = {};
-    results.forEach(({ groupId, messages: items }) => {
-      nextMessages[groupId] = items;
-      const seenAt = stored[String(groupId)];
-      nextUnread[groupId] = groupId === selectedId || !seenAt ? 0 : items.filter((item) => item.timestamp && item.timestamp > seenAt).length;
+
+    setMessages((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const { groupId, messages: items } of results) {
+        if (!sameMessages(current[groupId] ?? [], items)) {
+          next[groupId] = items;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
     });
-    setMessages(nextMessages);
-    setUnread(nextUnread);
-  }, [selectedId]);
+
+    setUnread((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const { groupId, messages: items } of results) {
+        const seenAt = stored[String(groupId)];
+        const count = groupId === selectedIdRef.current || !seenAt
+          ? 0
+          : items.filter((item) => item.timestamp && item.timestamp > seenAt).length;
+        if (current[groupId] !== count) {
+          next[groupId] = count;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, []);
+
+  const refreshConversation = useCallback(async (groupId: number) => {
+    const [items, groupExpenses] = await Promise.all([
+      apiGet<GroupMessage[]>(`/groups/${groupId}/chat/`),
+      apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`),
+    ]);
+    setMessages((current) => {
+      const previous = current[groupId] ?? [];
+      return sameMessages(previous, items) ? current : { ...current, [groupId]: items };
+    });
+    setExpenses((current) => {
+      const previous = current[groupId] ?? [];
+      return sameExpenses(previous, groupExpenses) ? current : { ...current, [groupId]: groupExpenses };
+    });
+    if (selectedIdRef.current === groupId) {
+      setUnread((current) => current[groupId] === 0 ? current : { ...current, [groupId]: 0 });
+    }
+    setConversationError(null);
+  }, []);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
@@ -54,7 +106,9 @@ export default function MessagesPage() {
       const groupList = await apiGet<Group[]>("/groups/");
       setGroups(groupList);
       const queryId = Number(new URLSearchParams(window.location.search).get("group"));
-      setSelectedId((current) => current && groupList.some((group) => group.id === current) ? current : groupList.find((group) => group.id === queryId)?.id ?? groupList[0]?.id ?? null);
+      setSelectedId((current) => current && groupList.some((group) => group.id === current)
+        ? current
+        : groupList.find((group) => group.id === queryId)?.id ?? groupList[0]?.id ?? null);
       await refreshMessages(groupList);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError));
@@ -66,28 +120,83 @@ export default function MessagesPage() {
   useEffect(() => { void loadGroups(); }, [loadGroups]);
 
   useEffect(() => {
-    if (!groups.length) return;
-    const interval = window.setInterval(() => {
-      void refreshMessages(groups).catch((requestError: unknown) => setError(getApiErrorMessage(requestError)));
-    }, 10000);
-    return () => window.clearInterval(interval);
-  }, [groups, refreshMessages]);
-
-  useEffect(() => {
     if (!selectedId) return;
     const stored = JSON.parse(window.localStorage.getItem(LAST_READ_KEY) ?? "{}") as Record<string, string>;
     stored[String(selectedId)] = new Date().toISOString();
     window.localStorage.setItem(LAST_READ_KEY, JSON.stringify(stored));
-    setUnread((current) => ({ ...current, [selectedId]: 0 }));
-    setMessages((current) => current);
+    setUnread((current) => current[selectedId] === 0 ? current : { ...current, [selectedId]: 0 });
     router.replace(`/messages?group=${selectedId}`, { scroll: false });
-  }, [router, selectedId]);
-
-  useEffect(() => { messageEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [selectedId, messages]);
+    void refreshConversation(selectedId).catch((requestError: unknown) => setConversationError(getApiErrorMessage(requestError)));
+    const interval = window.setInterval(() => {
+      void refreshConversation(selectedId).catch((requestError: unknown) => setConversationError(getApiErrorMessage(requestError)));
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, [refreshConversation, router, selectedId]);
 
   const selectedGroup = groups.find((group) => group.id === selectedId) ?? null;
   const currentMessages = selectedId ? messages[selectedId] ?? [] : [];
-  const filteredGroups = useMemo(() => groups.filter((group) => group.name.toLowerCase().includes(search.toLowerCase().trim())), [groups, search]);
+  const currentExpenses = selectedId ? expenses[selectedId] ?? [] : [];
+  const filteredGroups = useMemo(
+    () => groups.filter((group) => group.name.toLowerCase().includes(search.toLowerCase().trim())),
+    [groups, search],
+  );
+  const selectedGroups = useMemo(() => selectedGroup ? [selectedGroup] : [], [selectedGroup]);
+  const latestMessageKey = currentMessages.at(-1)?.id ?? currentMessages.at(-1)?.timestamp ?? "";
+  const editExpense = useCallback((expense: GroupExpense) => {
+    setSelectedExpense({
+      id: expense.id,
+      title: expense.description,
+      amount: Number(expense.amount),
+      category: "OTHER",
+      type: "Group",
+      groupId: expense.group,
+      date: expense.date,
+      splitType: "EXACT",
+      splitData: expense.shares.map((share) => ({ user_id: share.user_id, amount: Number(share.amount) })),
+    });
+    setExpenseDialogOpen(true);
+  }, []);
+
+  const saveExpense = async (form: ExpenseFormData) => {
+    if (!selectedId) throw new Error("Choose a group first.");
+    const body = {
+      description: form.title,
+      amount: form.amount,
+      split_type: form.splitType ?? "EQUAL",
+      split_data: form.splitData ?? [],
+    };
+    const saved = form.id
+      ? await apiPatch<GroupExpense>(`/expenses/${form.id}/`, body)
+      : await apiPost<GroupExpense>(`/expenses/group/${selectedId}/`, body);
+    setExpenses((current) => {
+      const groupExpenses = current[selectedId] ?? [];
+      const next = form.id
+        ? groupExpenses.map((item) => item.id === saved.id ? saved : item)
+        : [...groupExpenses, saved];
+      return { ...current, [selectedId]: next };
+    });
+    toast.success(form.id ? "Expense updated." : "Expense added.");
+    void refreshConversation(selectedId).catch((requestError: unknown) => setConversationError(getApiErrorMessage(requestError)));
+  };
+
+  const deleteExpense = async () => {
+    if (!deleteTarget || !selectedId) return;
+    setDeletingExpense(true);
+    try {
+      await apiDelete(`/expenses/${deleteTarget.id}/`);
+      setExpenses((current) => ({
+        ...current,
+        [selectedId]: (current[selectedId] ?? []).filter((item) => item.id !== deleteTarget.id),
+      }));
+      setDeleteTarget(null);
+      toast.success("Expense deleted.");
+      void refreshConversation(selectedId).catch((requestError: unknown) => setConversationError(getApiErrorMessage(requestError)));
+    } catch (requestError) {
+      toast.error(getApiErrorMessage(requestError));
+    } finally {
+      setDeletingExpense(false);
+    }
+  };
 
   const sendMessage = async () => {
     const text = message.trim();
@@ -117,15 +226,146 @@ export default function MessagesPage() {
       </aside>
       <section className={`${selectedGroup ? "flex" : "hidden"} min-w-0 flex-1 flex-col md:flex`}>
         {selectedGroup ? <>
-          <header className="flex h-[73px] shrink-0 items-center gap-3 border-b px-4 sm:px-5"><Button variant="ghost" size="icon" className="size-8 md:hidden" onClick={() => setSelectedId(null)} aria-label="Back to conversations"><ArrowLeft className="size-4" /></Button><Avatar className="size-10"><AvatarFallback>{selectedGroup.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{selectedGroup.name}</h2><p className="mt-0.5 text-xs text-muted-foreground">{selectedGroup.members.length} members · messages refresh every 10 seconds</p></div><Button variant="outline" size="sm" className="hidden gap-1.5 sm:flex" onClick={() => router.push(`/groups/${selectedGroup.id}`)}><Users className="size-3.5" /> Group</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void refreshMessages(groups).catch((cause: unknown) => setError(getApiErrorMessage(cause)))}>Refresh messages</DropdownMenuItem><DropdownMenuItem onSelect={() => router.push(`/groups/${selectedGroup.id}`)}>View group details</DropdownMenuItem></DropdownMenuContent></DropdownMenu></header>
-          {error && <div role="status" className="border-b bg-destructive/5 px-4 py-2 text-xs text-destructive">{error}</div>}
-          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-5"><div className="mx-auto max-w-3xl space-y-4">{currentMessages.length ? currentMessages.map((item, index) => {
-            const isYou = item.sender_username === username;
-            return <div key={item.id ?? `${item.timestamp}-${index}`} className={`flex ${isYou ? "justify-end" : "justify-start"}`}><div className={`flex max-w-[85%] flex-col ${isYou ? "items-end" : "items-start"}`}>{!isYou && <span className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">{item.is_system ? "Activity" : `@${item.sender_username}`}</span>}<div className={`rounded-2xl px-4 py-2.5 text-sm ${isYou ? "rounded-br-md bg-primary text-primary-foreground" : item.is_system ? "bg-muted/60 italic text-muted-foreground" : "rounded-bl-md bg-muted"}`}>{item.message}{item.is_pinned && <Badge variant="outline" className="ml-2">Pinned</Badge>}</div><div className="mt-1 flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground">{item.timestamp ? formatApiDate(item.timestamp) : "Now"}{isYou && <Check className="size-3" />}</div></div></div>;
-          }) : <div className="flex h-full min-h-48 items-center justify-center text-sm text-muted-foreground">No messages yet. Start the conversation.</div>}<div ref={messageEnd} /></div></div>
+          <header className="flex h-[73px] shrink-0 items-center gap-3 border-b px-4 sm:px-5"><Button variant="ghost" size="icon" className="size-8 md:hidden" onClick={() => setSelectedId(null)} aria-label="Back to conversations"><ArrowLeft className="size-4" /></Button><Avatar className="size-10"><AvatarFallback>{selectedGroup.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{selectedGroup.name}</h2><p className="mt-0.5 text-xs text-muted-foreground">{selectedGroup.members.length} members · messages refresh every 10 seconds</p></div><Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setSelectedExpense(null); setExpenseDialogOpen(true); }}><Plus className="size-3.5" /> <span className="hidden sm:inline">Add expense</span><span className="sm:hidden">Expense</span></Button><Button variant="outline" size="sm" className="hidden gap-1.5 sm:flex" onClick={() => router.push(`/groups/${selectedGroup.id}`)}><Users className="size-3.5" /> Group</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="size-8"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => void refreshConversation(selectedGroup.id).catch((cause: unknown) => setConversationError(getApiErrorMessage(cause)))}>Refresh messages</DropdownMenuItem><DropdownMenuItem onSelect={() => router.push(`/groups/${selectedGroup.id}`)}>View group details</DropdownMenuItem></DropdownMenuContent></DropdownMenu></header>
+          {conversationError && <div role="status" className="border-b bg-destructive/5 px-4 py-2 text-xs text-destructive">{conversationError}</div>}
+          <ChatTimeline
+            group={selectedGroup}
+            messages={currentMessages}
+            expenses={currentExpenses}
+            username={username}
+            currentUserId={currentUserId}
+            messageEnd={messageEnd}
+            latestMessageKey={latestMessageKey}
+            onEditExpense={editExpense}
+            onDeleteExpense={setDeleteTarget}
+          />
           <div className="shrink-0 border-t bg-background p-3"><div className="mx-auto flex max-w-3xl items-end gap-2"><Input value={message} maxLength={2000} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Write a message..." className="h-10" /><Button size="icon" className="size-10 shrink-0" disabled={!message.trim() || sending} onClick={() => void sendMessage()} aria-label="Send message"><Send className="size-4" /></Button></div></div>
-        </> : <div className="flex flex-1 flex-col items-center justify-center p-6 text-center"><div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><MessageCircle className="size-5" /></div><h2 className="mt-4 text-base font-semibold">Your group chats</h2><p className="mt-1 max-w-sm text-sm text-muted-foreground">Direct messaging is not available in the current API. Group conversations and activity are available here.</p><Button variant="outline" className="mt-4" onClick={() => router.push("/groups")}>Go to groups</Button></div>}
+        </> : <div className="flex flex-1 flex-col items-center justify-center p-6 text-center"><div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary"><MessageCircle className="size-5" /></div><h2 className="mt-4 text-base font-semibold">Your group chats</h2><p className="mt-1 max-w-sm text-sm text-muted-foreground">Select a group conversation to view messages and shared expenses.</p><Button variant="outline" className="mt-4" onClick={() => router.push("/groups")}>Go to groups</Button></div>}
       </section>
+      <AddEditExpenseDialog
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        expense={selectedExpense}
+        groups={selectedGroups}
+        defaultGroupId={selectedId ?? undefined}
+        onSubmit={saveExpense}
+      />
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent><DialogHeader><DialogTitle>Delete this expense?</DialogTitle><DialogDescription>This removes the expense and recalculates its shares and group balance.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button><Button variant="destructive" disabled={deletingExpense} onClick={() => void deleteExpense()}>{deletingExpense ? "Deleting..." : "Delete expense"}</Button></DialogFooter></DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+interface ChatTimelineProps {
+  group: Group;
+  messages: GroupMessage[];
+  expenses: GroupExpense[];
+  username: string;
+  currentUserId: number;
+  messageEnd: React.RefObject<HTMLDivElement | null>;
+  latestMessageKey: string | number;
+  onEditExpense: (expense: GroupExpense) => void;
+  onDeleteExpense: (expense: GroupExpense) => void;
+}
+
+const ChatTimeline = memo(function ChatTimeline({
+  group,
+  messages,
+  expenses,
+  username,
+  currentUserId,
+  messageEnd,
+  latestMessageKey,
+  onEditExpense,
+  onDeleteExpense,
+}: ChatTimelineProps) {
+  useEffect(() => {
+    messageEnd.current?.scrollIntoView({ behavior: "smooth" });
+  }, [group.id, latestMessageKey, messageEnd]);
+
+  const timeline = useMemo(() => [
+    ...messages.map((message, index) => ({
+      type: "message" as const,
+      sortTime: message.timestamp ? new Date(message.timestamp).getTime() : 0,
+      key: `message-${message.id ?? `${message.timestamp}-${index}`}`,
+      message,
+    })),
+    ...expenses.map((expense) => ({
+      type: "expense" as const,
+      sortTime: new Date(`${expense.date}T12:00:00`).getTime(),
+      key: `expense-${expense.id}`,
+      expense,
+    })),
+  ].sort((left, right) => left.sortTime - right.sortTime), [expenses, messages]);
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-5">
+      <div className="mx-auto max-w-3xl space-y-4">
+        {timeline.length ? timeline.map((item) => {
+          if (item.type === "expense") {
+            const expense = item.expense;
+            const paidBy = group.members.find((member) => member.user.id === expense.paid_by)?.user.username
+              ?? `member #${expense.paid_by}`;
+            const canManage = expense.paid_by === currentUserId;
+            return <div key={item.key} className="flex justify-center">
+              <div className="w-full max-w-md rounded-xl border bg-card px-4 py-3 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Receipt className="size-4" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0"><p className="truncate text-sm font-semibold">{expense.description}</p><p className="mt-0.5 text-xs text-muted-foreground">Paid by @{paidBy} · {formatApiDate(expense.date)}</p></div>
+                      <p className="shrink-0 text-sm font-semibold">Rs. {Number(expense.amount).toLocaleString()}</p>
+                    </div>
+                    <div className="mt-3 space-y-1 border-t pt-2">
+                      {expense.shares.map((share) => {
+                        const member = group.members.find((candidate) => candidate.user.id === share.user_id)?.user;
+                        return <p key={share.user_id} className="text-xs text-muted-foreground">@{member?.username ?? share.email} · Rs. {Number(share.amount).toLocaleString()}</p>;
+                      })}
+                    </div>
+                    {canManage && <div className="mt-3 flex justify-end gap-2">
+                      <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onEditExpense(expense)}><Pencil className="size-3.5" /> Edit</Button>
+                      <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-destructive" onClick={() => onDeleteExpense(expense)}><Trash2 className="size-3.5" /> Delete</Button>
+                    </div>}
+                  </div>
+                </div>
+              </div>
+            </div>;
+          }
+          const itemMessage = item.message;
+          const isYou = itemMessage.sender_username === username;
+          return <div key={item.key} className={`flex ${isYou ? "justify-end" : "justify-start"}`}><div className={`flex max-w-[85%] flex-col ${isYou ? "items-end" : "items-start"}`}>{!isYou && <span className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">{itemMessage.is_system ? "Activity" : `@${itemMessage.sender_username}`}</span>}<div className={`rounded-2xl px-4 py-2.5 text-sm ${isYou ? "rounded-br-md bg-primary text-primary-foreground" : itemMessage.is_system ? "bg-muted/60 italic text-muted-foreground" : "rounded-bl-md bg-muted"}`}>{itemMessage.message}{itemMessage.is_pinned && <Badge variant="outline" className="ml-2">Pinned</Badge>}</div><div className="mt-1 flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground">{itemMessage.timestamp ? formatApiDate(itemMessage.timestamp) : "Now"}{isYou && <Check className="size-3" />}</div></div></div>;
+        }) : <div className="flex h-full min-h-48 items-center justify-center text-sm text-muted-foreground">No messages or expenses yet. Start the conversation.</div>}
+        <div ref={messageEnd} />
+      </div>
+    </div>
+  );
+});
+
+function sameMessages(left: GroupMessage[], right: GroupMessage[]): boolean {
+  return left.length === right.length && left.every((item, index) => {
+    const other = right[index];
+    return item.id === other.id
+      && item.sender_username === other.sender_username
+      && item.message === other.message
+      && item.timestamp === other.timestamp
+      && item.is_system === other.is_system
+      && item.is_forwarded === other.is_forwarded
+      && item.is_pinned === other.is_pinned
+      && item.is_deleted === other.is_deleted;
+  });
+}
+
+function sameExpenses(left: GroupExpense[], right: GroupExpense[]): boolean {
+  return left.length === right.length && left.every((item, index) => {
+    const other = right[index];
+    return item.id === other.id
+      && item.description === other.description
+      && item.amount === other.amount
+      && item.paid_by === other.paid_by
+      && item.date === other.date
+      && item.shares.length === other.shares.length
+      && item.shares.every((share, shareIndex) => share.user_id === other.shares[shareIndex].user_id
+        && share.amount === other.shares[shareIndex].amount);
+  });
 }

@@ -93,6 +93,26 @@ export interface GroupMessage {
   is_deleted: boolean;
 }
 
+export interface GroupEventBudgetItem {
+  id: number;
+  description: string;
+  amount: number | string;
+}
+
+export interface GroupEvent {
+  id: number;
+  title: string;
+  description: string;
+  location: string;
+  starts_at: string;
+  ends_at: string;
+  created_by: string | null;
+  budget_items: GroupEventBudgetItem[];
+  planned_budget: number | string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Settlement {
   id: number;
   group: number;
@@ -122,7 +142,6 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   profilePicture?: string | null;
-  pictureFile?: string | null;
   is_active: boolean;
   has_password: boolean;
 }

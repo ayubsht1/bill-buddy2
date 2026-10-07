@@ -41,7 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex flex-1 flex-col gap-6 p-4 pt-2 sm:p-6 sm:pt-2">
+        <main className="flex min-w-0 flex-1 flex-col gap-6 p-4 pt-2 sm:p-6 sm:pt-2">
           {children}
         </main>
       </SidebarInset>
