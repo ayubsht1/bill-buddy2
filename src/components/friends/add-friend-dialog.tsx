@@ -6,9 +6,9 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiGet, apiPost, getApiErrorMessage, initials, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
+import { apiGet, apiPost, getApiErrorMessage, initials, resolveProfilePictureUrl, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
 
 interface AddFriendDialogProps {
   open: boolean;
@@ -110,7 +110,7 @@ export function AddFriendDialog({ open, onOpenChange, onSent }: AddFriendDialogP
                 const name = userDisplayName(user);
                 return (
                   <div key={user.id} className="flex items-center gap-3 rounded-xl border p-3">
-                    <Avatar className="size-10"><AvatarFallback>{initials(name)}</AvatarFallback></Avatar>
+                    <Avatar className="size-10"><AvatarImage src={resolveProfilePictureUrl(user.profile_picture)} alt={name} /><AvatarFallback>{initials(name)}</AvatarFallback></Avatar>
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{name}</p><p className="text-xs text-muted-foreground">@{user.username}</p></div>
                     <Button size="sm" variant={isSent ? "secondary" : "default"} disabled={isSent || sendingId === user.id} onClick={() => void sendRequest(user)} className="gap-1.5">
                       {isSent ? <><Check className="size-3.5" /> Sent</> : <><UserPlus className="size-3.5" /> Add</>}

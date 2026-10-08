@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiGet, getApiErrorMessage, initials, type Friend, userDisplayName } from "@/lib/api/billbuddy";
+import { apiGet, getApiErrorMessage, initials, resolveProfilePictureUrl, type Friend, userDisplayName } from "@/lib/api/billbuddy";
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<FriendCardModel[]>([]);
@@ -26,6 +26,7 @@ export default function FriendsPage() {
         id: friend.id,
         name: userDisplayName(friend),
         username: friend.username,
+        profilePicture: resolveProfilePictureUrl(friend.profile_picture),
         initials: initials(userDisplayName(friend)),
         balance: Math.abs(Number(friend.balance)),
         status: friend.status,

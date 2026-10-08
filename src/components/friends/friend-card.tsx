@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, MoreHorizontal } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,7 @@ export type Friend = {
   id: number;
   name: string;
   username: string;
+  profilePicture?: string;
   initials: string;
   balance: number;
   status: "owed" | "owe" | "settled";
@@ -61,6 +62,9 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
   return (
     <div className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center">
       <Avatar className="size-11 shrink-0">
+        {friend.profilePicture && (
+          <AvatarImage src={friend.profilePicture} alt={friend.name} />
+        )}
         <AvatarFallback>{friend.initials}</AvatarFallback>
       </Avatar>
 

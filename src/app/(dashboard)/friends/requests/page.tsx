@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Clock3, UserPlus, UserRoundX, Users, X } from "lucide-react";
 import toast from "react-hot-toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiGet, apiPost, formatApiDate, getApiErrorMessage, initials, type FriendRequest, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
+import { apiGet, apiPost, formatApiDate, getApiErrorMessage, initials, resolveProfilePictureUrl, type FriendRequest, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
 
 type Request = { id: number; person: UserSummary; createdAt: string };
 
@@ -73,7 +73,7 @@ export default function FriendRequestsPage() {
                 const name = userDisplayName(request.person);
                 return (
                   <div key={request.id} className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center">
-                    <Avatar className="size-11 shrink-0"><AvatarFallback>{initials(name)}</AvatarFallback></Avatar>
+                    <Avatar className="size-11 shrink-0"><AvatarImage src={resolveProfilePictureUrl(request.person.profile_picture)} alt={name} /><AvatarFallback>{initials(name)}</AvatarFallback></Avatar>
                     <div className="min-w-0 flex-1"><p className="text-sm font-medium">{name}</p><p className="mt-1 text-xs text-muted-foreground">@{request.person.username}</p><p className="mt-1 text-xs text-muted-foreground">{formatApiDate(request.createdAt)}</p></div>
                     {activeTab === "received" ? (
                       <div className="flex gap-2"><Button size="sm" disabled={busyId === request.id} onClick={() => void performAction(request, "accept")} className="gap-1.5"><Check className="size-3.5" /> Accept</Button><Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => void performAction(request, "reject")} className="gap-1.5"><X className="size-3.5" /> Reject</Button></div>
