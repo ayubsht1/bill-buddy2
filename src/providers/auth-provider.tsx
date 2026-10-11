@@ -7,13 +7,21 @@ function SessionGuard({ children }: { children: React.ReactNode }) {
   const { data: session, status, update } = useSession();
   const profileRefreshStarted = useRef(false);
 
-  useEffect(() => {
-    if (session?.error === "RefreshAccessTokenError") {
-      signOut({ redirect: false }).then(() => {
-        window.location.href = "/auth/login"; 
-      });
-    }
-  }, [session]);
+const hasSignedOut = useRef(false);
+
+useEffect(() => {
+  if (
+    session?.error === "RefreshAccessTokenError" &&
+    !hasSignedOut.current
+  ) {
+    hasSignedOut.current = true;
+
+    signOut({
+      redirect: true,
+      redirectTo: "/auth/login",
+    });
+  }
+}, [session?.error]);
 
   useEffect(() => {
     if (status === "unauthenticated") {

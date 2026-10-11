@@ -86,9 +86,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       { refresh: token.refreshToken },
       { headers: { "Content-Type": "application/json" } },
     );
+
     const refreshedData = response.data;
 
-    if (!refreshedData.success) throw new Error("Refresh failed on backend");
+    if (!refreshedData.success || !refreshedData.data?.access) {
+      throw new Error("Refresh failed on backend");
+    }
 
     return {
       ...token,
@@ -96,9 +99,13 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       refreshToken: refreshedData.data.refresh ?? token.refreshToken,
       error: undefined,
     };
-  } catch (error) {
-    console.error("Failed to refresh Django access token", error);
-    return { ...token, error: "RefreshAccessTokenError" };
+  } catch {
+    console.error("Django access token refresh failed.");
+
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
   }
 }
 
