@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bill Buddy - Frontend
 
-## Getting Started
+A full-stack expense splitting and bill sharing application built with Next.js, React, and Tailwind CSS.
 
-First, run the development server:
+## Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js (v18 or higher)
+- npm, yarn, pnpm, or bun
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   # or
+   bun install
+   ```
+
+2. **Environment setup**
+
+   Copy the example environment file and update the values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Update the following environment variables in `.env`:
+
+   - `NEXT_PUBLIC_API_URL` - Backend API URL (e.g., `http://localhost:8000/api`)
+   - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` - Google OAuth client ID
+   - Any other variables as needed
+
+3. **Running the development server**
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   # or
+   bun dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+   The page will auto-reload as you edit files. You can start editing the page by modifying `app/page.tsx`.
+
+## Available Scripts
+
+- `npm run dev` - Start the development server with Turbopack
+- `npm run build` - Build the production application
+- `npm run start` - Start the production server
+- `npm run lint` - Run ESLint to check for code issues
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs) - learn about styling
+- [Framer Motion Documentation](https://framer.com/motion) - learn about animations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `app/` - Next.js app router pages and layouts
+- `components/` - Reusable React components
+- `src/lib/` - Utility functions and API clients
+- `src/store/` - State management stores
+- `src/hooks/` - Custom React hooks
 
-## Deploy on Vercel
+## Deploying
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js. Push your changes to GitHub and connect your repository to Vercel for automatic deployments.
