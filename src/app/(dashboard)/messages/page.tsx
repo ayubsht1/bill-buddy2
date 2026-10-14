@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   MessageCircle,
+  MessageCircleReply,
   MoreHorizontal,
   Paperclip,
   Pencil,
@@ -60,39 +61,12 @@ import {
 } from "@/lib/api/billbuddy";
 
 const LAST_READ_KEY = "billbuddy-group-chat-last-read";
+
 const MESSAGE_EMOJIS = [
-  "😀",
-  "😃",
-  "😄",
-  "😁",
-  "😆",
-  "😂",
-  "🤣",
-  "😊",
-  "🙂",
-  "😉",
-  "😍",
-  "🥰",
-  "😘",
-  "😎",
-  "🤔",
-  "🙌",
-  "👏",
-  "🙏",
-  "👍",
-  "👎",
-  "❤️",
-  "💔",
-  "💕",
-  "💯",
-  "🎉",
-  "🔥",
-  "✨",
-  "💸",
-  "💰",
-  "🍕",
-  "☕",
-  "✅",
+  "😀", "😃", "😄", "😁", "😆", "😂", "🤣", "😊",
+  "🙂", "😉", "😍", "🥰", "😘", "😎", "🤔", "🙌",
+  "👏", "🙏", "👍", "👎", "❤️", "💔", "💕", "💯",
+  "🎉", "🔥", "✨", "💸", "💰", "🍕", "☕", "✅",
 ];
 
 export default function MessagesPage() {
@@ -100,14 +74,17 @@ export default function MessagesPage() {
   const router = useRouter();
   const username = session?.user?.username ?? "";
   const currentUserId = Number(session?.user?.id);
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [messages, setMessages] = useState<Record<number, GroupMessage[]>>({});
   const [expenses, setExpenses] = useState<Record<number, GroupExpense[]>>({});
   const [unread, setUnread] = useState<Record<number, number>>({});
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const selectedIdRef = useRef<number | null>(null);
+
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
+  const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,11 +93,13 @@ export default function MessagesPage() {
   const [conversationError, setConversationError] = useState<string | null>(
     null,
   );
+
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] =
     useState<ExpenseFormData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GroupExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState(false);
+
   const messageEnd = useRef<HTMLDivElement>(null);
   const messageInput = useRef<HTMLInputElement>(null);
   const attachmentInput = useRef<HTMLInputElement>(null);
@@ -128,15 +107,20 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
+
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!emojiPicker.current?.contains(event.target as Node))
+      if (!emojiPicker.current?.contains(event.target as Node)) {
         setEmojiPickerOpen(false);
+      }
     };
+
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setEmojiPickerOpen(false);
     };
+
     document.addEventListener("pointerdown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
@@ -151,6 +135,7 @@ export default function MessagesPage() {
     const stored = JSON.parse(
       window.localStorage.getItem(LAST_READ_KEY) ?? "{}",
     ) as Record<string, string>;
+
     const results = await Promise.all(
       groupList.map(async (group) => ({
         groupId: group.id,
@@ -161,30 +146,36 @@ export default function MessagesPage() {
     setMessages((current) => {
       let changed = false;
       const next = { ...current };
+
       for (const { groupId, messages: items } of results) {
         if (!sameMessages(current[groupId] ?? [], items)) {
           next[groupId] = items;
           changed = true;
         }
       }
+
       return changed ? next : current;
     });
 
     setUnread((current) => {
       let changed = false;
       const next = { ...current };
+
       for (const { groupId, messages: items } of results) {
         const seenAt = stored[String(groupId)];
         const count =
           groupId === selectedIdRef.current || !seenAt
             ? 0
-            : items.filter((item) => item.timestamp && item.timestamp > seenAt)
-                .length;
+            : items.filter(
+                (item) => item.timestamp && item.timestamp > seenAt,
+              ).length;
+
         if (current[groupId] !== count) {
           next[groupId] = count;
           changed = true;
         }
       }
+
       return changed ? next : current;
     });
   }, []);
@@ -194,35 +185,44 @@ export default function MessagesPage() {
       apiGet<GroupMessage[]>(`/groups/${groupId}/chat/`),
       apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`),
     ]);
+
     setMessages((current) => {
       const previous = current[groupId] ?? [];
+
       return sameMessages(previous, items)
         ? current
         : { ...current, [groupId]: items };
     });
+
     setExpenses((current) => {
       const previous = current[groupId] ?? [];
+
       return sameExpenses(previous, groupExpenses)
         ? current
         : { ...current, [groupId]: groupExpenses };
     });
+
     if (selectedIdRef.current === groupId) {
       setUnread((current) =>
         current[groupId] === 0 ? current : { ...current, [groupId]: 0 },
       );
     }
+
     setConversationError(null);
   }, []);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
       const groupList = await apiGet<Group[]>("/groups/");
       setGroups(groupList);
+
       const queryId = Number(
         new URLSearchParams(window.location.search).get("group"),
       );
+
       setSelectedId((current) =>
         current && groupList.some((group) => group.id === current)
           ? current
@@ -230,6 +230,7 @@ export default function MessagesPage() {
             groupList[0]?.id ??
             null),
       );
+
       await refreshMessages(groupList);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError));
@@ -244,29 +245,39 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!selectedId) return;
+
     const stored = JSON.parse(
       window.localStorage.getItem(LAST_READ_KEY) ?? "{}",
     ) as Record<string, string>;
+
     stored[String(selectedId)] = new Date().toISOString();
     window.localStorage.setItem(LAST_READ_KEY, JSON.stringify(stored));
+
     setUnread((current) =>
       current[selectedId] === 0 ? current : { ...current, [selectedId]: 0 },
     );
+
     router.replace(`/messages?group=${selectedId}`, { scroll: false });
+
     void refreshConversation(selectedId).catch((requestError: unknown) =>
       setConversationError(getApiErrorMessage(requestError)),
     );
+
     const interval = window.setInterval(() => {
       void refreshConversation(selectedId).catch((requestError: unknown) =>
         setConversationError(getApiErrorMessage(requestError)),
       );
     }, 10000);
+
     return () => window.clearInterval(interval);
   }, [refreshConversation, router, selectedId]);
 
-  const selectedGroup = groups.find((group) => group.id === selectedId) ?? null;
-  const currentMessages = selectedId ? (messages[selectedId] ?? []) : [];
-  const currentExpenses = selectedId ? (expenses[selectedId] ?? []) : [];
+  const selectedGroup =
+    groups.find((group) => group.id === selectedId) ?? null;
+
+  const currentMessages = selectedId ? messages[selectedId] ?? [] : [];
+  const currentExpenses = selectedId ? expenses[selectedId] ?? [] : [];
+
   const filteredGroups = useMemo(
     () =>
       groups.filter((group) =>
@@ -274,12 +285,17 @@ export default function MessagesPage() {
       ),
     [groups, search],
   );
+
   const selectedGroups = useMemo(
     () => (selectedGroup ? [selectedGroup] : []),
     [selectedGroup],
   );
+
   const latestMessageKey =
-    currentMessages.at(-1)?.id ?? currentMessages.at(-1)?.timestamp ?? "";
+    currentMessages.at(-1)?.id ??
+    currentMessages.at(-1)?.timestamp ??
+    "";
+
   const editExpense = useCallback((expense: GroupExpense) => {
     setSelectedExpense({
       id: expense.id,
@@ -295,28 +311,35 @@ export default function MessagesPage() {
         amount: Number(share.amount),
       })),
     });
+
     setExpenseDialogOpen(true);
   }, []);
 
   const saveExpense = async (form: ExpenseFormData) => {
     if (!selectedId) throw new Error("Choose a group first.");
+
     const body = {
       description: form.title,
       amount: form.amount,
       split_type: form.splitType ?? "EQUAL",
       split_data: form.splitData ?? [],
     };
+
     const saved = form.id
       ? await apiPatch<GroupExpense>(`/expenses/${form.id}/`, body)
       : await apiPost<GroupExpense>(`/expenses/group/${selectedId}/`, body);
+
     setExpenses((current) => {
       const groupExpenses = current[selectedId] ?? [];
       const next = form.id
         ? groupExpenses.map((item) => (item.id === saved.id ? saved : item))
         : [...groupExpenses, saved];
+
       return { ...current, [selectedId]: next };
     });
+
     toast.success(form.id ? "Expense updated." : "Expense added.");
+
     void refreshConversation(selectedId).catch((requestError: unknown) =>
       setConversationError(getApiErrorMessage(requestError)),
     );
@@ -324,17 +347,22 @@ export default function MessagesPage() {
 
   const deleteExpense = async () => {
     if (!deleteTarget || !selectedId) return;
+
     setDeletingExpense(true);
+
     try {
       await apiDelete(`/expenses/${deleteTarget.id}/`);
+
       setExpenses((current) => ({
         ...current,
         [selectedId]: (current[selectedId] ?? []).filter(
           (item) => item.id !== deleteTarget.id,
         ),
       }));
+
       setDeleteTarget(null);
       toast.success("Expense deleted.");
+
       void refreshConversation(selectedId).catch((requestError: unknown) =>
         setConversationError(getApiErrorMessage(requestError)),
       );
@@ -347,27 +375,45 @@ export default function MessagesPage() {
 
   const sendMessage = async () => {
     const text = message.trim();
+
     if (!selectedId || (!text && !attachment)) return;
+
     setSending(true);
+
     try {
       let sent: GroupMessage;
-      if (attachment) {
+
+      if (attachment || replyingTo) {
         const form = new FormData();
+
         if (text) form.set("message", text);
-        form.set("attachment", attachment);
-        sent = await apiPost<GroupMessage>(`/groups/${selectedId}/chat/`, form);
+        if (attachment) form.set("attachment", attachment);
+        if (replyingTo?.id) {
+          form.set("reply_to_id", String(replyingTo.id));
+        }
+
+        sent = await apiPost<GroupMessage>(
+          `/groups/${selectedId}/chat/`,
+          form,
+        );
       } else {
         sent = await apiPost<GroupMessage>(`/groups/${selectedId}/chat/`, {
           message: text,
         });
       }
+
       setMessages((current) => ({
         ...current,
         [selectedId]: [...(current[selectedId] ?? []), sent],
       }));
+
       setMessage("");
       setAttachment(null);
-      if (attachmentInput.current) attachmentInput.current.value = "";
+      setReplyingTo(null);
+
+      if (attachmentInput.current) {
+        attachmentInput.current.value = "";
+      }
     } catch (requestError) {
       toast.error(getApiErrorMessage(requestError));
     } finally {
@@ -379,8 +425,11 @@ export default function MessagesPage() {
     const input = messageInput.current;
     const start = input?.selectionStart ?? message.length;
     const end = input?.selectionEnd ?? message.length;
+
     const nextMessage = `${message.slice(0, start)}${emoji}${message.slice(end)}`;
+
     setMessage(nextMessage);
+
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(start + emoji.length, start + emoji.length);
@@ -400,6 +449,7 @@ export default function MessagesPage() {
                 Group conversations
               </p>
             </div>
+
             <Button
               variant="ghost"
               size="icon"
@@ -409,6 +459,7 @@ export default function MessagesPage() {
               <RefreshCw className="size-4" />
             </Button>
           </div>
+
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -419,6 +470,7 @@ export default function MessagesPage() {
             />
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="space-y-3 p-4">
@@ -441,12 +493,17 @@ export default function MessagesPage() {
           ) : filteredGroups.length ? (
             filteredGroups.map((group) => {
               const latest = messages[group.id]?.at(-1);
+
               return (
                 <button
                   key={group.id}
                   type="button"
                   onClick={() => setSelectedId(group.id)}
-                  className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors ${group.id === selectedId ? "bg-primary/8" : "hover:bg-muted/50"}`}
+                  className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors ${
+                    group.id === selectedId
+                      ? "bg-primary/8"
+                      : "hover:bg-muted/50"
+                  }`}
                 >
                   <Avatar className="size-11">
                     <AvatarFallback>
@@ -457,11 +514,13 @@ export default function MessagesPage() {
                         .join("")}
                     </AvatarFallback>
                   </Avatar>
+
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium">
                         {group.name}
                       </p>
+
                       {latest?.timestamp && (
                         <span className="shrink-0 text-[10px] text-muted-foreground">
                           {new Date(latest.timestamp).toLocaleTimeString([], {
@@ -471,12 +530,19 @@ export default function MessagesPage() {
                         </span>
                       )}
                     </div>
+
                     <div className="mt-1 flex items-center gap-2">
                       <p className="truncate text-xs text-muted-foreground">
                         {latest
-                          ? `${latest.sender_username}: ${latest.message || (latest.attachment_name ? `📎 ${latest.attachment_name}` : "")}`
+                          ? `${latest.sender_username}: ${
+                              latest.message ||
+                              (latest.attachment_name
+                                ? `📎 ${latest.attachment_name}`
+                                : "")
+                            }`
                           : "No messages yet"}
                       </p>
+
                       {(unread[group.id] ?? 0) > 0 && (
                         <Badge className="ml-auto size-5 shrink-0 justify-center rounded-full p-0 text-[10px]">
                           {unread[group.id]}
@@ -494,6 +560,7 @@ export default function MessagesPage() {
                   ? "No groups match your search."
                   : "Join or create a group to start chatting."}
               </p>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -506,6 +573,7 @@ export default function MessagesPage() {
           )}
         </div>
       </aside>
+
       <section
         className={`${selectedGroup ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col lg:flex`}
       >
@@ -521,6 +589,7 @@ export default function MessagesPage() {
               >
                 <ArrowLeft className="size-4" />
               </Button>
+
               <Avatar className="size-10 shrink-0">
                 <AvatarFallback>
                   {selectedGroup.name
@@ -530,6 +599,7 @@ export default function MessagesPage() {
                     .join("")}
                 </AvatarFallback>
               </Avatar>
+
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-sm font-semibold">
                   {selectedGroup.name}
@@ -539,6 +609,7 @@ export default function MessagesPage() {
                   every 10 seconds
                 </p>
               </div>
+
               <Button
                 variant="outline"
                 size="icon"
@@ -551,6 +622,7 @@ export default function MessagesPage() {
               >
                 <Plus className="size-3.5" />
               </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -562,6 +634,7 @@ export default function MessagesPage() {
               >
                 <Plus className="size-3.5" /> Add expense
               </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -570,6 +643,7 @@ export default function MessagesPage() {
               >
                 <Users className="size-3.5" /> Group
               </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -580,6 +654,7 @@ export default function MessagesPage() {
                     <MoreHorizontal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
+
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onSelect={() =>
@@ -591,6 +666,7 @@ export default function MessagesPage() {
                   >
                     Refresh messages
                   </DropdownMenuItem>
+
                   <DropdownMenuItem
                     onSelect={() => router.push(`/groups/${selectedGroup.id}`)}
                   >
@@ -599,6 +675,7 @@ export default function MessagesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </header>
+
             {conversationError && (
               <div
                 role="status"
@@ -607,6 +684,7 @@ export default function MessagesPage() {
                 {conversationError}
               </div>
             )}
+
             <ChatTimeline
               group={selectedGroup}
               messages={currentMessages}
@@ -617,18 +695,49 @@ export default function MessagesPage() {
               latestMessageKey={latestMessageKey}
               onEditExpense={editExpense}
               onDeleteExpense={setDeleteTarget}
+              onReplyMessage={setReplyingTo}
             />
+
             <div className="shrink-0 border-t bg-background p-2 sm:p-3">
               <div className="mx-auto max-w-3xl">
+                {replyingTo && (
+                  <div className="mb-2 flex items-center justify-between rounded-lg border bg-muted px-3 py-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-primary">
+                        Replying to @{replyingTo.sender_username}
+                      </p>
+                      <p className="truncate text-muted-foreground">
+                        {replyingTo.message ||
+                          replyingTo.attachment_name ||
+                          "Attachment"}
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 shrink-0"
+                      onClick={() => setReplyingTo(null)}
+                      aria-label="Cancel reply"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                )}
+
                 {attachment && (
                   <div className="mb-2 flex min-w-0 items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
+
                     <span className="min-w-0 flex-1 truncate">
                       {attachment.name}
                     </span>
+
                     <span className="shrink-0 text-muted-foreground">
                       {(attachment.size / (1024 * 1024)).toFixed(1)} MB
                     </span>
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -636,8 +745,9 @@ export default function MessagesPage() {
                       className="size-7 shrink-0"
                       onClick={() => {
                         setAttachment(null);
-                        if (attachmentInput.current)
+                        if (attachmentInput.current) {
                           attachmentInput.current.value = "";
+                        }
                       }}
                       aria-label="Remove attachment"
                     >
@@ -645,6 +755,7 @@ export default function MessagesPage() {
                     </Button>
                   </div>
                 )}
+
                 <div className="relative flex items-end gap-2">
                   <input
                     ref={attachmentInput}
@@ -654,14 +765,17 @@ export default function MessagesPage() {
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
+
                       if (file.size > 10 * 1024 * 1024) {
                         toast.error("Attachments must be 10 MB or smaller.");
                         event.target.value = "";
                         return;
                       }
+
                       setAttachment(file);
                     }}
                   />
+
                   <Button
                     type="button"
                     variant="outline"
@@ -673,6 +787,7 @@ export default function MessagesPage() {
                   >
                     <Paperclip className="size-4" />
                   </Button>
+
                   <Input
                     ref={messageInput}
                     value={message}
@@ -684,9 +799,14 @@ export default function MessagesPage() {
                         void sendMessage();
                       }
                     }}
-                    placeholder="Write a message..."
+                    placeholder={
+                      replyingTo
+                        ? `Reply to @${replyingTo.sender_username}...`
+                        : "Write a message..."
+                    }
                     className="h-10 min-w-0"
                   />
+
                   <div ref={emojiPicker} className="shrink-0">
                     {emojiPickerOpen && (
                       <div
@@ -697,6 +817,7 @@ export default function MessagesPage() {
                         <p className="mb-2 text-xs font-medium text-muted-foreground">
                           Choose an emoji
                         </p>
+
                         <div className="grid grid-cols-8 gap-1">
                           {MESSAGE_EMOJIS.map((emoji) => (
                             <button
@@ -712,6 +833,7 @@ export default function MessagesPage() {
                         </div>
                       </div>
                     )}
+
                     <Button
                       type="button"
                       variant="outline"
@@ -725,6 +847,7 @@ export default function MessagesPage() {
                       <Smile className="size-4" />
                     </Button>
                   </div>
+
                   <Button
                     size="icon"
                     className="size-10 shrink-0"
@@ -735,6 +858,7 @@ export default function MessagesPage() {
                     <Send className="size-4" />
                   </Button>
                 </div>
+
                 <p className="mt-1.5 pl-1 text-[10px] text-muted-foreground">
                   Images and documents up to 10 MB
                 </p>
@@ -746,10 +870,13 @@ export default function MessagesPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <MessageCircle className="size-5" />
             </div>
+
             <h2 className="mt-4 text-base font-semibold">Your group chats</h2>
+
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               Select a group conversation to view messages and shared expenses.
             </p>
+
             <Button
               variant="outline"
               className="mt-4"
@@ -760,6 +887,7 @@ export default function MessagesPage() {
           </div>
         )}
       </section>
+
       <AddEditExpenseDialog
         open={expenseDialogOpen}
         onOpenChange={setExpenseDialogOpen}
@@ -768,6 +896,7 @@ export default function MessagesPage() {
         defaultGroupId={selectedId ?? undefined}
         onSubmit={saveExpense}
       />
+
       <Dialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
@@ -780,10 +909,12 @@ export default function MessagesPage() {
               balance.
             </DialogDescription>
           </DialogHeader>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
+
             <Button
               variant="destructive"
               disabled={deletingExpense}
@@ -798,6 +929,8 @@ export default function MessagesPage() {
   );
 }
 
+
+
 interface ChatTimelineProps {
   group: Group;
   messages: GroupMessage[];
@@ -808,6 +941,7 @@ interface ChatTimelineProps {
   latestMessageKey: string | number;
   onEditExpense: (expense: GroupExpense) => void;
   onDeleteExpense: (expense: GroupExpense) => void;
+  onReplyMessage: (message: GroupMessage) => void;
 }
 
 const ChatTimeline = memo(function ChatTimeline({
@@ -820,6 +954,7 @@ const ChatTimeline = memo(function ChatTimeline({
   latestMessageKey,
   onEditExpense,
   onDeleteExpense,
+  onReplyMessage,
 }: ChatTimelineProps) {
   useEffect(() => {
     messageEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -853,11 +988,14 @@ const ChatTimeline = memo(function ChatTimeline({
           timeline.map((item) => {
             if (item.type === "expense") {
               const expense = item.expense;
+
               const paidBy =
                 group.members.find(
                   (member) => member.user.id === expense.paid_by,
                 )?.user.username ?? `member #${expense.paid_by}`;
+
               const canManage = expense.paid_by === currentUserId;
+
               return (
                 <div key={item.key} className="flex justify-center">
                   <div className="w-full max-w-md rounded-xl border bg-card px-3 py-3 shadow-sm sm:px-4">
@@ -865,26 +1003,31 @@ const ChatTimeline = memo(function ChatTimeline({
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Receipt className="size-4" />
                       </div>
+
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold">
                               {expense.description}
                             </p>
+
                             <p className="mt-0.5 text-xs text-muted-foreground">
                               Paid by @{paidBy} · {formatApiDate(expense.date)}
                             </p>
                           </div>
+
                           <p className="shrink-0 text-sm font-semibold">
                             Rs. {Number(expense.amount).toLocaleString()}
                           </p>
                         </div>
+
                         <div className="mt-3 space-y-1 border-t pt-2">
                           {expense.shares.map((share) => {
                             const member = group.members.find(
                               (candidate) =>
                                 candidate.user.id === share.user_id,
                             )?.user;
+
                             return (
                               <p
                                 key={share.user_id}
@@ -896,6 +1039,7 @@ const ChatTimeline = memo(function ChatTimeline({
                             );
                           })}
                         </div>
+
                         {canManage && (
                           <div className="mt-3 flex justify-end gap-2">
                             <Button
@@ -906,6 +1050,7 @@ const ChatTimeline = memo(function ChatTimeline({
                             >
                               <Pencil className="size-3.5" /> Edit
                             </Button>
+
                             <Button
                               size="sm"
                               variant="ghost"
@@ -922,18 +1067,24 @@ const ChatTimeline = memo(function ChatTimeline({
                 </div>
               );
             }
+
             const itemMessage = item.message;
             const isYou = itemMessage.sender_username === username;
             const senderName = itemMessage.sender_username || "Unknown";
             const senderProfilePicture = itemMessage.sender_profile_picture;
             const isSystem = itemMessage.is_system;
+
             return (
               <div
                 key={item.key}
-                className={`flex min-w-0 ${isYou ? "justify-end" : "justify-start"}`}
+                className={`flex min-w-0 ${
+                  isYou ? "justify-end" : "justify-start"
+                }`}
               >
                 <div
-                  className={`flex min-w-0 max-w-[90%] flex-col sm:max-w-[85%] ${isYou ? "items-end" : "items-start"}`}
+                  className={`flex min-w-0 max-w-[90%] flex-col sm:max-w-[85%] ${
+                    isYou ? "items-end" : "items-start"
+                  }`}
                 >
                   {!isYou && (
                     <div className="mb-1 flex items-center gap-2 px-1">
@@ -946,32 +1097,66 @@ const ChatTimeline = memo(function ChatTimeline({
                           {senderName.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
+
                       <span className="max-w-full break-words text-[11px] font-medium text-muted-foreground">
                         {isSystem ? "Activity" : `@${senderName}`}
                       </span>
                     </div>
                   )}
 
-                  {itemMessage.message && (
-                    <div
-                      className={`max-w-full break-words rounded-2xl px-3 py-2.5 text-sm sm:px-4 ${
-                        isYou
-                          ? "rounded-br-md bg-primary text-primary-foreground"
-                          : itemMessage.is_system
-                            ? "bg-muted/60 italic text-muted-foreground"
-                            : "rounded-bl-md bg-muted"
-                      }`}
-                    >
-                      <span className="whitespace-pre-wrap break-words">
-                        {itemMessage.message}
-                      </span>
-                      {itemMessage.is_pinned && (
-                        <Badge variant="outline" className="ml-2">
-                          Pinned
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                    {(itemMessage.message || itemMessage.reply_to) && (
+                      <div
+                        className={`max-w-full min-w-0 break-words rounded-2xl px-3 py-2.5 text-sm sm:px-4 ${
+                          isYou
+                            ? "rounded-br-md bg-primary text-primary-foreground"
+                            : isSystem
+                              ? "bg-muted/60 italic text-muted-foreground"
+                              : "rounded-bl-md bg-muted"
+                        }`}
+                      >
+                        {itemMessage.reply_to && (
+                          <div
+                            className={`mb-2 cursor-pointer rounded-lg border-l-[3px] px-3 py-2 ${
+                              isYou
+                                ? "border-white/70 bg-black/10"
+                                : "border-primary bg-background/70"
+                            }`}
+                            title={`Replying to @${itemMessage.reply_to.sender_username}`}
+                          >
+                            <p
+                              className={`mb-1 text-xs font-semibold ${
+                                isYou
+                                  ? "text-primary-foreground"
+                                  : "text-primary"
+                              }`}
+                            >
+                              {itemMessage.reply_to.sender_username === username
+                                ? "You"
+                                : `@${itemMessage.reply_to.sender_username}`}
+                            </p>
+
+                            <p className="line-clamp-3 whitespace-pre-wrap break-words text-xs opacity-80">
+                              {itemMessage.reply_to.message ||
+                                itemMessage.reply_to.attachment_name ||
+                                "Attachment"}
+                            </p>
+                          </div>
+                        )}
+
+                        {itemMessage.message && (
+                          <span className="whitespace-pre-wrap break-words">
+                            {itemMessage.message}
+                          </span>
+                        )}
+
+                        {itemMessage.is_pinned && (
+                          <Badge variant="outline" className="ml-2">
+                            Pinned
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
 
                   {itemMessage.attachment_url &&
                     (itemMessage.attachment_type?.startsWith("image/") ? (
@@ -999,17 +1184,33 @@ const ChatTimeline = memo(function ChatTimeline({
                         className="mt-2 flex max-w-full items-center gap-3 rounded-xl border bg-background px-3 py-2 text-sm hover:bg-muted"
                       >
                         <FileText className="size-5 shrink-0 text-primary" />
+
                         <span className="min-w-0 flex-1 truncate">
                           {itemMessage.attachment_name || "Download attachment"}
                         </span>
+
                         <Download className="size-4 shrink-0 text-muted-foreground" />
                       </a>
                     ))}
-                  <div className="mt-1 flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground">
+
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 px-1 text-[10px] text-muted-foreground">
                     {itemMessage.timestamp
                       ? formatApiDate(itemMessage.timestamp)
                       : "Now"}
+
                     {isYou && <Check className="size-3" />}
+
+                    {!isSystem && (
+                      <button
+                        type="button"
+                        onClick={() => onReplyMessage(itemMessage)}
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label={`Reply to ${senderName}`}
+                      >
+                        <MessageCircleReply className="size-3" />
+                        Reply
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1020,6 +1221,7 @@ const ChatTimeline = memo(function ChatTimeline({
             No messages or expenses yet. Start the conversation.
           </div>
         )}
+
         <div ref={messageEnd} />
       </div>
     </div>
@@ -1031,6 +1233,7 @@ function sameMessages(left: GroupMessage[], right: GroupMessage[]): boolean {
     left.length === right.length &&
     left.every((item, index) => {
       const other = right[index];
+
       return (
         item.id === other.id &&
         item.sender_username === other.sender_username &&
@@ -1054,6 +1257,7 @@ function sameExpenses(left: GroupExpense[], right: GroupExpense[]): boolean {
     left.length === right.length &&
     left.every((item, index) => {
       const other = right[index];
+
       return (
         item.id === other.id &&
         item.description === other.description &&

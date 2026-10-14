@@ -95,6 +95,12 @@ export interface GroupMessage {
   is_forwarded: boolean;
   is_pinned: boolean;
   is_deleted: boolean;
+  reply_to?: {
+  id: number;
+  message: string;
+  sender_username: string;
+  attachment_name: string | null;
+} | null;
 }
 
 export interface GroupEventBudgetItem {
