@@ -59,6 +59,7 @@ import {
   type GroupExpense,
   type GroupMessage,
 } from "@/lib/api/billbuddy";
+import { createGroupChatSocket } from "@/lib/api/websocket";
 
 const LAST_READ_KEY = "billbuddy-group-chat-last-read";
 
@@ -71,6 +72,7 @@ const MESSAGE_EMOJIS = [
 
 export default function MessagesPage() {
   const { data: session } = useSession();
+  const accessToken = session?.accessToken;
   const router = useRouter();
   const username = session?.user?.username ?? "";
   const currentUserId = Number(session?.user?.id);
@@ -102,9 +104,144 @@ export default function MessagesPage() {
 
   const messageEnd = useRef<HTMLDivElement>(null);
   const messageInput = useRef<HTMLInputElement>(null);
+  const groupSocket = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttempts = useRef(0);
+  const shouldReconnect = useRef(true);
   const attachmentInput = useRef<HTMLInputElement>(null);
   const emojiPicker = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+  if (!selectedId) return;
+
+  const groupId = selectedId;
+  let socket: WebSocket | null = null;
+  let disposed = false;
+
+  shouldReconnect.current = true;
+  reconnectAttempts.current = 0;
+
+  const connect = () => {
+    if (disposed || !shouldReconnect.current|| !accessToken) return;
+
+    try {
+      socket = createGroupChatSocket(groupId, accessToken)
+      groupSocket.current = socket;
+
+      socket.onopen = () => {
+        if (disposed) {
+          socket?.close();
+          return;
+        }
+
+        reconnectAttempts.current = 0;
+        console.log("Group chat WebSocket connected");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const { event_type, payload } = data;
+
+          if (
+            !payload ||
+            (event_type !== "chat_message" &&
+              event_type !== "message_update")
+          ) {
+            return;
+          }
+
+          const incoming = payload as GroupMessage;
+
+          setMessages((current) => {
+            const existing = current[groupId] ?? [];
+            const index = existing.findIndex(
+              (item) => item.id === incoming.id,
+            );
+
+            const updated =
+              index >= 0
+                ? existing.map((item, i) =>
+                    i === index ? incoming : item,
+                  )
+                : [...existing, incoming];
+
+            return {
+              ...current,
+              [groupId]: updated,
+            };
+          });
+        } catch (error) {
+          console.error("Invalid WebSocket message:", error);
+        }
+      };
+
+      socket.onclose = (event) => {
+        if (groupSocket.current === socket) {
+          groupSocket.current = null;
+        }
+
+        if (disposed || !shouldReconnect.current) return;
+
+        // Authentication or permission failures usually need a fix
+        // on the backend/authentication configuration, not retries.
+        if (event.code === 4401 || event.code === 4403) {
+          console.error(
+            event.code === 4401
+              ? "WebSocket authentication failed."
+              : "You are not a member of this group.",
+          );
+          return;
+        }
+
+        if (reconnectAttempts.current >= 10) {
+          console.error("WebSocket reconnection limit reached.");
+          return;
+        }
+
+        reconnectAttempts.current += 1;
+
+        const delay = Math.min(
+          1000 * 2 ** (reconnectAttempts.current - 1),
+          30000,
+        );
+
+        reconnectTimer.current = setTimeout(connect, delay);
+      };
+
+      socket.onerror = () => {
+        // onclose normally handles the reconnection attempt.
+        console.error("Group chat WebSocket connection error.");
+      };
+    } catch (error) {
+      console.error("Could not create WebSocket:", error);
+    }
+  };
+
+  connect();
+
+  return () => {
+    disposed = true;
+    shouldReconnect.current = false;
+
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+
+    if (socket) {
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onclose = null;
+      socket.onerror = null;
+      socket.close();
+    }
+
+    if (groupSocket.current === socket) {
+      groupSocket.current = null;
+    }
+  };
+}, [selectedId]);
   useEffect(() => {
     if (!emojiPickerOpen) return;
 
@@ -243,34 +380,122 @@ export default function MessagesPage() {
     void loadGroups();
   }, [loadGroups]);
 
-  useEffect(() => {
-    if (!selectedId) return;
+ 
+useEffect(() => {
+  if (selectedId === null) return;
+  if (!accessToken) return;
 
-    const stored = JSON.parse(
-      window.localStorage.getItem(LAST_READ_KEY) ?? "{}",
-    ) as Record<string, string>;
+  const groupId = selectedId;
 
-    stored[String(selectedId)] = new Date().toISOString();
-    window.localStorage.setItem(LAST_READ_KEY, JSON.stringify(stored));
+  const stored = JSON.parse(
+    window.localStorage.getItem(LAST_READ_KEY) ?? "{}",
+  ) as Record<string, string>;
 
-    setUnread((current) =>
-      current[selectedId] === 0 ? current : { ...current, [selectedId]: 0 },
-    );
+  stored[String(groupId)] = new Date().toISOString();
 
-    router.replace(`/messages?group=${selectedId}`, { scroll: false });
+  window.localStorage.setItem(
+    LAST_READ_KEY,
+    JSON.stringify(stored),
+  );
 
-    void refreshConversation(selectedId).catch((requestError: unknown) =>
-      setConversationError(getApiErrorMessage(requestError)),
-    );
+  setUnread((current) =>
+    current[groupId] === 0
+      ? current
+      : { ...current, [groupId]: 0 },
+  );
 
-    const interval = window.setInterval(() => {
-      void refreshConversation(selectedId).catch((requestError: unknown) =>
-        setConversationError(getApiErrorMessage(requestError)),
+  router.replace(`/messages?group=${groupId}`, {
+    scroll: false,
+  });
+
+  // Fetch existing messages and expenses.
+  void refreshConversation(groupId).catch(
+    (requestError: unknown) => {
+      setConversationError(
+        getApiErrorMessage(requestError),
       );
-    }, 10000);
+    },
+  );
 
-    return () => window.clearInterval(interval);
-  }, [refreshConversation, router, selectedId]);
+  // Open the WebSocket for this group.
+  const socket = createGroupChatSocket(groupId, accessToken);
+
+  groupSocket.current = socket;
+
+  socket.onopen = () => {
+    setConversationError(null);
+  };
+
+  socket.onmessage = (event: MessageEvent<string>) => {
+    try {
+      const data: {
+        event_type?: string;
+        payload?: GroupMessage;
+      } = JSON.parse(event.data);
+
+      const payload = data.payload;
+
+      if (!payload || payload.id == null) return;
+
+      if (data.event_type === "chat_message") {
+        setMessages((current) => {
+          const existing = current[groupId] ?? [];
+
+          // Avoid duplicates if the message is already loaded.
+          if (
+            existing.some(
+              (item) => item.id === payload.id,
+            )
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            [groupId]: [...existing, payload],
+          };
+        });
+
+        return;
+      }
+
+      if (data.event_type === "message_update") {
+        setMessages((current) => {
+          const existing = current[groupId] ?? [];
+
+          return {
+            ...current,
+            [groupId]: existing.map((item) =>
+              item.id === payload.id
+                ? { ...item, ...payload }
+                : item,
+            ),
+          };
+        });
+      }
+    } catch (requestError) {
+      console.error(
+        "Failed to process group WebSocket event:",
+        requestError,
+      );
+    }
+  };
+
+  socket.onerror = () => {
+    setConversationError(
+      "WebSocket connection failed. Check your server and authentication.",
+    );
+  };
+
+  return () => {
+    socket.close();
+
+    if (groupSocket.current === socket) {
+      groupSocket.current = null;
+    }
+  };
+}, [refreshConversation, router, selectedId]);
+
 
   const selectedGroup =
     groups.find((group) => group.id === selectedId) ?? null;
@@ -373,53 +598,81 @@ export default function MessagesPage() {
     }
   };
 
-  const sendMessage = async () => {
-    const text = message.trim();
+const sendMessage = async () => {
+  const text = message.trim();
 
-    if (!selectedId || (!text && !attachment)) return;
+  if (!selectedId || (!text && !attachment)) return;
 
-    setSending(true);
+  setSending(true);
 
-    try {
-      let sent: GroupMessage;
+  try {
+    // Attachments use REST API because the current WebSocket
+    // consumer does not support attachment uploads.
+    if (attachment) {
+      const form = new FormData();
 
-      if (attachment || replyingTo) {
-        const form = new FormData();
+      if (text) {
+        form.set("message", text);
+      }
 
-        if (text) form.set("message", text);
-        if (attachment) form.set("attachment", attachment);
-        if (replyingTo?.id) {
-          form.set("reply_to_id", String(replyingTo.id));
+      form.set("attachment", attachment);
+
+      if (replyingTo?.id) {
+        form.set("reply_to_id", String(replyingTo.id));
+      }
+
+      const sent = await apiPost<GroupMessage>(
+        `/groups/${selectedId}/chat/`,
+        form,
+      );
+
+      setMessages((current) => {
+        const existing = current[selectedId] ?? [];
+
+        // Prevent duplicate messages if the REST refresh already
+        // added this message.
+        if (existing.some((item) => item.id === sent.id)) {
+          return current;
         }
 
-        sent = await apiPost<GroupMessage>(
-          `/groups/${selectedId}/chat/`,
-          form,
-        );
-      } else {
-        sent = await apiPost<GroupMessage>(`/groups/${selectedId}/chat/`, {
+        return {
+          ...current,
+          [selectedId]: [...existing, sent],
+        };
+      });
+    } else {
+      // Send text messages and replies through WebSocket.
+      const socket = groupSocket.current;
+
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        toast.error("Chat connection is not ready. Please try again.");
+        return;
+      }
+
+      socket.send(
+        JSON.stringify({
+          action: "send_message",
           message: text,
-        });
-      }
-
-      setMessages((current) => ({
-        ...current,
-        [selectedId]: [...(current[selectedId] ?? []), sent],
-      }));
-
-      setMessage("");
-      setAttachment(null);
-      setReplyingTo(null);
-
-      if (attachmentInput.current) {
-        attachmentInput.current.value = "";
-      }
-    } catch (requestError) {
-      toast.error(getApiErrorMessage(requestError));
-    } finally {
-      setSending(false);
+          ...(replyingTo?.id
+            ? { reply_to_id: replyingTo.id }
+            : {}),
+        }),
+      );
     }
-  };
+
+    setMessage("");
+    setAttachment(null);
+    setReplyingTo(null);
+
+    if (attachmentInput.current) {
+      attachmentInput.current.value = "";
+    }
+  } catch (requestError) {
+    toast.error(getApiErrorMessage(requestError));
+  } finally {
+    setSending(false);
+  }
+};
 
   const insertEmoji = (emoji: string) => {
     const input = messageInput.current;
@@ -605,8 +858,7 @@ export default function MessagesPage() {
                   {selectedGroup.name}
                 </h2>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {selectedGroup.members.length} members · messages refresh
-                  every 10 seconds
+                  {selectedGroup.members.length} members · Live chat
                 </p>
               </div>
 
