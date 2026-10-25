@@ -20,8 +20,8 @@ export const groupApi = {
     return apiPost<Group>(`/groups/${groupId}/add-member/`, { identifier });
   },
 
-  async changeRole(userId: number, role: string): Promise<void> {
-    return apiPatch(`/groups/members/${userId}/`, { role });
+  async changeRole(groupId: number, userId: number, role: string): Promise<void> {
+    return apiPatch(`/groups/${groupId}/members/${userId}/role/`, { role });
   },
 
   async removeMember(groupId: number, userId: number): Promise<void> {

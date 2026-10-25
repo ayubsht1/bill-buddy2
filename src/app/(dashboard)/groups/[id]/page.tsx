@@ -8,10 +8,7 @@ import {
   AddEditExpenseDialog,
   type ExpenseFormData,
 } from "@/components/expenses/add-edit-expense-dialog";
-import {
-  type Group,
-  type GroupExpense,
-} from "@/lib/api/billbuddy";
+import { type Group, type GroupExpense } from "@/lib/api/billbuddy";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,7 +33,16 @@ export default function GroupDetailsPage() {
   const currentUserId = Number(session?.user?.id);
 
   const {
-    state: { details: group, balances, expenses, activity, loading, error, activityError, saving },
+    state: {
+      details: group,
+      balances,
+      expenses,
+      activity,
+      loading,
+      error,
+      activityError,
+      saving,
+    },
     actions: {
       loadGroup,
       addMember,
@@ -124,10 +130,11 @@ export default function GroupDetailsPage() {
           currentUserId={currentUserId}
           canManage={canManage}
           isOwner={isOwner}
-          busyMemberId={saving ? 0 : null} // Approximate, since useGroupDetails doesn't track individual member busy state perfectly
+          busyMemberId={saving ? 0 : null}
           onAddMember={addMember}
           onAddMemberLoading={saving}
-          onChangeRole={changeRole}
+          /* Wrap changeRole so it curries/supplies groupId automatically */
+          onChangeRole={(userId, role) => changeRole(groupId, userId, role)}
           onRemoveMember={removeMember}
           setRemoveTarget={setTargetMemberId}
         />

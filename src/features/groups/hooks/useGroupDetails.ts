@@ -23,16 +23,27 @@ export function useGroupDetails(groupId: number) {
     setLoading(true);
     setError(null);
     try {
-      const [group, balData, expData, actData] = await Promise.all([
+      const [group, expData] = await Promise.all([
         groupApi.getGroupDetails(groupId),
-        groupApi.getGroupBalances(groupId),
         groupApi.getGroupExpenses(groupId),
-        groupApi.getGroupActivity(groupId),
       ]);
       setDetails(group);
-      setBalances(balData);
       setExpenses(expData);
-      setActivity(actData);
+
+      try {
+        const balData = await groupApi.getGroupBalances(groupId);
+        setBalances(balData);
+      } catch (e) {
+        console.error("Balances load failed:", e);
+        setBalances(null);
+      }
+
+      try {
+        const actData = await groupApi.getGroupActivity(groupId);
+        setActivity(actData);
+      } catch (e) {
+        setActivityError(getApiErrorMessage(e));
+      }
     } catch (e) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -59,9 +70,9 @@ export function useGroupDetails(groupId: number) {
     }
   };
 
-  const changeRole = async (userId: number, role: string) => {
+  const changeRole = async (groupId: number, userId: number, role: string) => {
     try {
-      await groupApi.changeRole(userId, role);
+      await groupApi.changeRole(groupId, userId, role);
       toast.success("Role updated.");
       await loadGroup();
     } catch (e) {

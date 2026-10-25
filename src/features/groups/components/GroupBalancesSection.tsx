@@ -12,8 +12,8 @@ interface GroupBalancesSectionProps {
 }
 
 export function GroupBalancesSection({
-  balances,
-  suggested,
+  balances = [],
+  suggested = [],
   onManageSettlementsClick,
 }: GroupBalancesSectionProps) {
   return (
