@@ -14,66 +14,11 @@ const palette = ["var(--primary)", "#3b82f6", "#8b5cf6", "#06b6d4", "#ec4899", "
 const labels: Record<string, string> = { FOOD: "Food & Dining", SHOPPING: "Shopping", UTILITIES: "Bills & Utilities", TRANSPORT: "Transportation", ENTERTAINMENT: "Entertainment", GROCERIES: "Groceries", OTHER: "Other" };
 const money = (amount: number) => `Rs. ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
+import { useAnalytics } from "@/features/expenses/hooks/useAnalytics";
+
 export default function AnalyticsPage() {
-  const [range, setRange] = useState<Range>("6m");
-  const [transactions, setTransactions] = useState<PersonalExpense[]>([]);
-  const [groupSpending, setGroupSpending] = useState<GroupSpend[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadAnalytics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const records = await apiGet<PersonalExpense[]>("/expenses/personal/");
-      setTransactions(records);
-      const groups = await apiGet<ApiGroup[]>("/groups/");
-      const groupData = await Promise.all(groups.map(async (group) => {
-        const expenses = await apiGet<GroupExpense[]>(`/expenses/group/${group.id}/`);
-        return {
-          name: group.name,
-          amount: expenses.reduce((sum, expense) => sum + Number(expense.amount), 0),
-          expenseCount: expenses.length,
-          memberCount: group.members.length,
-        };
-      }));
-      setGroupSpending(groupData);
-    } catch (requestError) {
-      setError(getApiErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void loadAnalytics(); }, [loadAnalytics]);
-
-  const data = useMemo(() => {
-    const current = new Date();
-    const monthCount = range === "6m" ? 6 : 12;
-    const monthKeys = Array.from({ length: monthCount }, (_, index) => {
-      const date = new Date(current.getFullYear(), current.getMonth() - monthCount + index + 1, 1);
-      return { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: date.toLocaleDateString(undefined, { month: "short", year: monthCount > 6 ? "2-digit" : undefined }) };
-    });
-    const categoryTotals = new Map<string, number>();
-    const monthly = monthKeys.map((month) => ({ ...month, income: 0, expense: 0 }));
-    const cutoff = monthKeys[0]?.key ?? "";
-    transactions.forEach((transaction) => {
-      const date = transaction.date.slice(0, 7);
-      if (date < cutoff) return;
-      const month = monthly.find((item) => item.key === date);
-      if (month) month[transaction.transaction_type.toLowerCase() as "income" | "expense"] += Number(transaction.amount);
-      if (transaction.transaction_type === "EXPENSE") {
-        categoryTotals.set(transaction.category, (categoryTotals.get(transaction.category) ?? 0) + Number(transaction.amount));
-      }
-    });
-    const categories = [...categoryTotals.entries()].map(([category, amount], index) => ({ name: labels[category] ?? category, amount, color: palette[index % palette.length] })).sort((a, b) => b.amount - a.amount);
-    const totalExpenses = monthly.reduce((sum, month) => sum + month.expense, 0);
-    const currentMonth = monthly.at(-1);
-    const previousMonth = monthly.at(-2);
-    const monthChange = previousMonth && previousMonth.expense > 0 && currentMonth ? ((currentMonth.expense - previousMonth.expense) / previousMonth.expense) * 100 : 0;
-    const expenseRecords = transactions.filter((item) => item.transaction_type === "EXPENSE" && item.date.slice(0, 7) >= cutoff);
-    return { monthly, categories, totalExpenses, currentMonth, previousMonth, monthChange, averageExpense: expenseRecords.length ? totalExpenses / expenseRecords.length : 0, expenseCount: expenseRecords.length };
-  }, [range, transactions]);
+  const { state, actions } = useAnalytics();
+  const { range, groupSpending, loading, error, analyticsData: data } = state;
 
   const totalGroupSpend = groupSpending.reduce((sum, group) => sum + group.amount, 0);
   const personalSpend = data.totalExpenses;
@@ -82,12 +27,81 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">Analytics</h1><p className="mt-1 text-sm text-muted-foreground">Explore spending patterns and recorded cash flow.</p></div><div className="flex items-center gap-2"><CalendarDays className="size-4 text-muted-foreground" />{(["6m", "1y"] as const).map((option) => <Button key={option} variant={range === option ? "default" : "outline"} size="sm" onClick={() => setRange(option)}>{option === "6m" ? "6 months" : "1 year"}</Button>)}</div></div>
-      {error && <Card className="border-destructive/40"><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" size="sm" onClick={() => void loadAnalytics()}>Retry</Button></CardContent></Card>}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Explore spending patterns and recorded cash flow.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="size-4 text-muted-foreground" />
+          {(["6m", "1y"] as const).map((option) => (
+            <Button
+              key={option}
+              variant={range === option ? "default" : "outline"}
+              size="sm"
+              onClick={() => actions.setRange(option)}
+            >
+              {option === "6m" ? "6 months" : "1 year"}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {error && (
+        <Card className="border-destructive/40">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => void actions.loadAnalytics()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       <Card><CardHeader><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle className="text-base">Monthly cash flow</CardTitle><CardDescription>Personal income and outflow from the selected period.</CardDescription></div>{data.currentMonth && <p className="text-sm font-medium">{money(data.currentMonth.expense)} this month</p>}</div></CardHeader><CardContent>{loading ? <Skeleton className="h-[340px] w-full" /> : data.monthly.some((month) => month.income || month.expense) ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={data.monthly} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => money(Number(value))} /><Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar dataKey="expense" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyState message="Add personal transactions to see historical cash flow." />}</CardContent></Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card><CardHeader><CardTitle className="text-base">Spending by category</CardTitle><CardDescription>Category distribution for personal expenses.</CardDescription></CardHeader><CardContent>{loading ? <Skeleton className="h-72 w-full" /> : data.categories.length ? <div className="flex flex-col items-center gap-5 sm:flex-row"><div className="h-52 w-full sm:w-1/2"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.categories} dataKey="amount" nameKey="name" innerRadius={52} outerRadius={78}>{data.categories.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip formatter={(value) => money(Number(value))} /></PieChart></ResponsiveContainer></div><div className="w-full space-y-3">{data.categories.map((item) => <div key={item.name} className="flex items-center gap-2 text-sm"><span className="size-2.5 rounded-full" style={{ background: item.color }} /><span className="min-w-0 flex-1 truncate">{item.name}</span><span className="font-medium">{money(item.amount)}</span></div>)}</div></div> : <EmptyState message="No category totals for this period." />}</CardContent></Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Spending by category</CardTitle>
+            <CardDescription>Category distribution for personal expenses.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-72 w-full" />
+            ) : data.categories.length ? (
+              <div className="flex flex-col items-center gap-5 sm:flex-row">
+                <div className="h-52 w-full sm:w-1/2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.categories}
+                        dataKey="amount"
+                        nameKey="name"
+                        innerRadius={52}
+                        outerRadius={78}
+                      >
+                        {data.categories.map((item, index) => (
+                          <Cell key={item.name} fill={palette[index % palette.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => money(Number(value))} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full space-y-3">
+                  {data.categories.map((item, index) => (
+                    <div key={item.name} className="flex items-center gap-2 text-sm">
+                      <span className="size-2.5 rounded-full" style={{ background: palette[index % palette.length] }} />
+                      <span className="min-w-0 flex-1 truncate">{labels[item.name] ?? item.name}</span>
+                      <span className="font-medium">{money(item.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <EmptyState message="No category totals for this period." />
+            )}
+          </CardContent>
+        </Card>
         <Card><CardHeader><CardTitle className="text-base">Personal vs. group spending</CardTitle><CardDescription>Group totals are calculated from all group expenses.</CardDescription></CardHeader><CardContent className="space-y-5">{loading ? <Skeleton className="h-60 w-full" /> : <><div className="space-y-3"><SpendRow label="Personal" amount={personalSpend} percent={personalPercent} /><SpendRow label="Groups" amount={totalGroupSpend} percent={100 - personalPercent} /></div><div className="border-t pt-4"><p className="text-xs text-muted-foreground">Combined recorded spend</p><p className="mt-1 text-xl font-semibold">{money(totalSpend)}</p></div><p className="text-xs text-muted-foreground">Group totals are lifetime values because the group-expense endpoint has no date filters.</p></>}</CardContent></Card>
       </div>
 

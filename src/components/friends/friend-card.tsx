@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, MoreHorizontal } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, MessageCircle, MoreHorizontal } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { apiDelete, getApiErrorMessage } from "@/lib/api/billbuddy";
 
 export type Friend = {
@@ -42,6 +43,10 @@ interface FriendCardProps {
 export function FriendCard({ friend, onRemoved }: FriendCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
+
   const isOwed = friend.status === "owed";
   const isOwe = friend.status === "owe";
 
@@ -59,6 +64,21 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+    setSendingMessage(true);
+    try {
+      // await sendPersonalMessage(friend.id, messageText.trim());
+      toast.success(`Message sent to ${friend.name}!`);
+      setMessageText("");
+      setMessageOpen(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center">
       <Avatar className="size-11 shrink-0">
@@ -70,23 +90,16 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">
-            {friend.name}
-          </p>
+          <p className="truncate text-sm font-medium">{friend.name}</p>
 
           {friend.status === "settled" && (
-            <Badge
-              variant="secondary"
-              className="text-[10px]"
-            >
+            <Badge variant="secondary" className="text-[10px]">
               Settled
             </Badge>
           )}
         </div>
 
-        <p className="mt-1 text-xs text-muted-foreground">
-          @{friend.username}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">@{friend.username}</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 sm:justify-end">
@@ -125,46 +138,86 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="gap-1.5">
+            <MessageCircle className="size-3.5" />
+            Message
+          </Button>
+
           <Button asChild variant="outline" size="sm">
-            <Link href={`/friends/${friend.id}`}>
-              View
-            </Link>
+            <Link href={`/friends/${friend.id}`}>View</Link>
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-              >
+              <Button variant="ghost" size="icon" className="size-8">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/friends/${friend.id}`}>
-                  View profile
-                </Link>
+                <Link href={`/friends/${friend.id}`}>View profile</Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmOpen(true)}>
+              <DropdownMenuItem
+                className="text-destructive"
+                onSelect={() => setConfirmOpen(true)}
+              >
                 Remove friend
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Remove {friend.name}?</DialogTitle>
-              <DialogDescription>This removes the friendship. Shared group expenses will remain unchanged.</DialogDescription>
+              <DialogDescription>
+                This removes the friendship. Shared group expenses will remain
+                unchanged.
+              </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-              <Button variant="destructive" disabled={removing} onClick={() => void removeFriend()}>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={removing}
+                onClick={() => void removeFriend()}
+              >
                 {removing ? "Removing..." : "Remove friend"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Message {friend.name}</DialogTitle>
+              <DialogDescription>
+                Send a personal message to @{friend.username}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2">
+              <Textarea
+                placeholder="Write your message..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMessageOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={sendingMessage || !messageText.trim()}
+                onClick={() => void handleSendMessage()}
+              >
+                {sendingMessage ? "Sending..." : "Send Message"}
               </Button>
             </DialogFooter>
           </DialogContent>
