@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, MessageCircle, MoreHorizontal } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -22,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { apiDelete, getApiErrorMessage } from "@/lib/api/billbuddy";
 
 export type Friend = {
@@ -41,11 +41,9 @@ interface FriendCardProps {
 }
 
 export function FriendCard({ friend, onRemoved }: FriendCardProps) {
+  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [messageOpen, setMessageOpen] = useState(false);
-  const [messageText, setMessageText] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
 
   const isOwed = friend.status === "owed";
   const isOwe = friend.status === "owe";
@@ -64,19 +62,11 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim()) return;
-    setSendingMessage(true);
-    try {
-      // await sendPersonalMessage(friend.id, messageText.trim());
-      toast.success(`Message sent to ${friend.name}!`);
-      setMessageText("");
-      setMessageOpen(false);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    } finally {
-      setSendingMessage(false);
-    }
+  // opens the chat in /messages (creates a placeholder if there's no history yet)
+  const messageFriend = () => {
+    router.push(
+      `/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.username || friend.name)}`,
+    );
   };
 
   return (
@@ -110,7 +100,6 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
                 <ArrowDownLeft className="size-3.5" />
                 You are owed
               </div>
-
               <p className="mt-1 text-sm font-semibold">
                 Rs. {friend.balance.toLocaleString()}
               </p>
@@ -123,7 +112,6 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
                 <ArrowUpRight className="size-3.5" />
                 You owe
               </div>
-
               <p className="mt-1 text-sm font-semibold">
                 Rs. {friend.balance.toLocaleString()}
               </p>
@@ -138,7 +126,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
         </div>
 
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={messageFriend} className="gap-1.5">
             <MessageCircle className="size-3.5" />
             Message
           </Button>
@@ -188,36 +176,6 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
                 onClick={() => void removeFriend()}
               >
                 {removing ? "Removing..." : "Remove friend"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Message {friend.name}</DialogTitle>
-              <DialogDescription>
-                Send a personal message to @{friend.username}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-2">
-              <Textarea
-                placeholder="Write your message..."
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                rows={4}
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setMessageOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                disabled={sendingMessage || !messageText.trim()}
-                onClick={() => void handleSendMessage()}
-              >
-                {sendingMessage ? "Sending..." : "Send Message"}
               </Button>
             </DialogFooter>
           </DialogContent>

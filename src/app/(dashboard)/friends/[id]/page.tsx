@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 
 interface FriendDetails extends UserSummary {
   balance: number;
@@ -29,9 +28,6 @@ export default function FriendDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [messageOpen, setMessageOpen] = useState(false);
-  const [messageText, setMessageText] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
 
   const loadFriend = useCallback(async () => {
     setLoading(true);
@@ -53,27 +49,16 @@ export default function FriendDetailPage() {
     finally { setRemoving(false); }
   };
 
-  const sendMessageToFriend = async () => {
-    if (!messageText.trim() || !friend) return;
-    setSendingMessage(true);
-    try {
-      // await sendPersonalMessage(friend.id, messageText.trim());
-      toast.success(`Message sent to ${userDisplayName(friend)}!`);
-      setMessageText("");
-      setMessageOpen(false);
-    } catch (requestError) {
-      toast.error(getApiErrorMessage(requestError));
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
   if (loading) return <div className="mx-auto w-full max-w-6xl space-y-4"><Skeleton className="h-10 w-48" /><Skeleton className="h-32 w-full" /><Skeleton className="h-64 w-full" /></div>;
   if (error || !friend) return <div className="mx-auto max-w-3xl space-y-4 py-12 text-center"><p className="text-sm text-destructive">{error ?? "Friend details could not be loaded."}</p><Button variant="outline" onClick={() => void loadFriend()}>Retry</Button></div>;
 
   const name = userDisplayName(friend);
   const owed = Math.max(friend.balance, 0);
   const owe = Math.max(-friend.balance, 0);
+
+  const messageFriend = () => {
+    router.push(`/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.username || name)}`);
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -100,12 +85,12 @@ export default function FriendDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => setMessageOpen(true)}>
+            <Button variant="outline" className="gap-2" onClick={messageFriend}>
               <MessageCircle className="size-4" /> Message
             </Button>
-            <Button variant="outline" className="gap-2" asChild>
-              <Link href="/messages"><MessageCircle className="size-4" /> Group chats</Link>
-            </Button>
+            {/* <Button variant="outline" className="gap-2" asChild>
+              <Link href="/messages"><MessageCircle className="size-4" /> All chats</Link>
+            </Button> */}
             <Button className="gap-2" asChild>
               <Link href="/settlements"><Wallet className="size-4" /> Settle up</Link>
             </Button>
@@ -179,29 +164,6 @@ export default function FriendDetailPage() {
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" disabled={removing} onClick={() => void removeFriend()}>
               {removing ? "Removing..." : "Remove friend"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Message {name}</DialogTitle>
-            <DialogDescription>Send a personal message to @{friend.username}.</DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <Textarea
-              placeholder="Write your message..."
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMessageOpen(false)}>Cancel</Button>
-            <Button disabled={sendingMessage || !messageText.trim()} onClick={() => void sendMessageToFriend()}>
-              {sendingMessage ? "Sending..." : "Send Message"}
             </Button>
           </DialogFooter>
         </DialogContent>

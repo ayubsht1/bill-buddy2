@@ -4,10 +4,11 @@ import { Receipt, Pencil, Trash2, Download, FileText, Check, MessageCircleReply 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatApiDate, type Group, type GroupExpense, type GroupMessage } from "@/lib/api/billbuddy";
+import { formatApiDate, type GroupExpense, type GroupMessage } from "@/lib/api/billbuddy";
+import type { Conversation } from "../types/types";
 
 interface ChatTimelineProps {
-  group: Group;
+  group: Conversation;
   messages: GroupMessage[];
   expenses: GroupExpense[];
   username: string;
@@ -139,6 +140,7 @@ export const ChatTimeline = memo(function ChatTimeline({
             const senderName = itemMessage.sender_username || "Unknown";
             const senderProfilePicture = itemMessage.sender_profile_picture;
             const isSystem = itemMessage.is_system;
+            const isDeleted = Boolean((itemMessage as any).is_deleted);
 
             return (
               <div
@@ -173,7 +175,7 @@ export const ChatTimeline = memo(function ChatTimeline({
                       className={`max-w-full min-w-0 break-words rounded-2xl px-3 py-2.5 text-sm sm:px-4 ${
                         isYou
                           ? "rounded-br-md bg-primary text-primary-foreground"
-                          : isSystem
+                          : isSystem || isDeleted
                             ? "bg-muted/60 italic text-muted-foreground"
                             : "rounded-bl-md bg-muted"
                       }`}
@@ -254,7 +256,7 @@ export const ChatTimeline = memo(function ChatTimeline({
                       ? formatApiDate(itemMessage.timestamp)
                       : "Now"}
                     {isYou && <Check className="size-3" />}
-                    {!isSystem && (
+                    {!isSystem && !isDeleted && (
                       <button
                         type="button"
                         onClick={() => onReplyMessage(itemMessage)}

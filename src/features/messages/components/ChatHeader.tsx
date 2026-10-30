@@ -1,13 +1,17 @@
 import { memo } from "react";
-import { ArrowLeft, Users, MoreHorizontal } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ArrowLeft, Users, MoreHorizontal, Plus } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { type Group } from "@/lib/api/billbuddy";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Conversation } from "../types/types";
 
 interface ChatHeaderProps {
-  group: Group;
+  conversation: Conversation;
   onBack: () => void;
   onAddExpense: () => void;
   onRefresh: () => void;
@@ -15,18 +19,20 @@ interface ChatHeaderProps {
 }
 
 export const ChatHeader = memo(function ChatHeader({
-  group,
+  conversation,
   onBack,
   onAddExpense,
   onRefresh,
   onViewGroup,
 }: ChatHeaderProps) {
+  const isDirect = conversation.kind === "direct";
+
   return (
     <header className="flex h-[73px] shrink-0 items-center gap-1.5 border-b px-2 sm:gap-3 sm:px-5">
       <Button
         variant="ghost"
         size="icon"
-        className="size-8 lg:hidden"
+        className="size-8 md:hidden"
         onClick={onBack}
         aria-label="Back to conversations"
       >
@@ -34,8 +40,11 @@ export const ChatHeader = memo(function ChatHeader({
       </Button>
 
       <Avatar className="size-10 shrink-0">
+        {conversation.avatarUrl && (
+          <AvatarImage src={conversation.avatarUrl} alt={conversation.title} />
+        )}
         <AvatarFallback>
-          {group.name
+          {conversation.title
             .split(/\s+/)
             .slice(0, 2)
             .map((part) => part[0]?.toUpperCase())
@@ -44,41 +53,45 @@ export const ChatHeader = memo(function ChatHeader({
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-sm font-semibold">
-          {group.name}
-        </h2>
+        <h2 className="truncate text-sm font-semibold">{conversation.title}</h2>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {group.members.length} members · Live chat
+          {isDirect
+            ? "Direct message"
+            : `${conversation.members.length} members · Live chat`}
         </p>
       </div>
 
-      <Button
-        variant="outline"
-        size="icon"
-        className="size-8 shrink-0 min-[400px]:hidden"
-        aria-label="Add expense"
-        onClick={onAddExpense}
-      >
-        <PlusIcon className="size-3.5" />
-      </Button>
+      {!isDirect && (
+        <>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8 shrink-0 min-[400px]:hidden"
+            aria-label="Add expense"
+            onClick={onAddExpense}
+          >
+            <Plus className="size-3.5" />
+          </Button>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="hidden shrink-0 gap-1.5 min-[400px]:inline-flex"
-        onClick={onAddExpense}
-      >
-        <PlusIcon className="size-3.5" /> Add expense
-      </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden shrink-0 gap-1.5 min-[400px]:inline-flex"
+            onClick={onAddExpense}
+          >
+            <Plus className="size-3.5" /> Add expense
+          </Button>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="hidden shrink-0 gap-1.5 sm:flex"
-        onClick={onViewGroup}
-      >
-        <Users className="size-3.5" /> Group
-      </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden shrink-0 gap-1.5 sm:flex"
+            onClick={onViewGroup}
+          >
+            <Users className="size-3.5" /> Group
+          </Button>
+        </>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -86,23 +99,18 @@ export const ChatHeader = memo(function ChatHeader({
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
+            aria-label="More options"
           >
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onRefresh}>
-            Refresh messages
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onRefresh}>Refresh messages</DropdownMenuItem>
           <DropdownMenuItem onClick={onViewGroup}>
-            View group details
+            {isDirect ? "View friends" : "View group details"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
   );
 });
-
-function PlusIcon(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-}

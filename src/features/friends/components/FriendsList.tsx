@@ -28,7 +28,9 @@ export function FriendsList({
   onFriendRemoved,
 }: FriendsListProps) {
   const filteredFriends = friends.filter((friend) =>
-    `${friend.name} ${friend.username}`.toLowerCase().includes(search.toLowerCase().trim())
+    `${friend.name} ${friend.username}`
+      .toLowerCase()
+      .includes(search.toLowerCase().trim()),
   );
 
   return (
@@ -79,10 +81,7 @@ export function FriendsList({
         ) : (
           <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <div className="size-5 text-muted-foreground">
-                {/* Using a simple placeholder for Users icon here or importing it */}
-                <span className="text-xs">👥</span>
-              </div>
+              <span className="text-lg">👥</span>
             </div>
             <h3 className="mt-4 text-sm font-semibold">
               {search ? "No friends found" : "No friends yet"}

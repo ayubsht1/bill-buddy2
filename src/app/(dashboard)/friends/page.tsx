@@ -1,37 +1,36 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, UserPlus, Users } from "lucide-react";
 import { AddFriendDialog } from "@/components/friends/add-friend-dialog";
 import { Button } from "@/components/ui/button";
 import { useFriends } from "@/features/friends/hooks/useFriends";
 import { SummaryCard } from "@/features/friends/components/SummaryCard";
 import { FriendsList } from "@/features/friends/components/FriendsList";
-import { FriendMessageDialog } from "@/features/friends/components/FriendMessageDialog";
 
 export default function FriendsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [addFriendOpen, setAddFriendOpen] = useState(false);
-  const [openMessageDialog, setOpenMessageDialog] = useState(false);
-  const [messageReceiverId, setMessageReceiverId] = useState<number | null>(null);
-  const [messageText, setMessageText] = useState("");
 
   const {
-    state: { friends, loading, error, sendingMessage },
-    actions: { loadFriends, sendPersonalMessage },
+    state: { friends, loading, error },
+    actions: { loadFriends },
   } = useFriends();
 
-  const totalOwed = friends.filter((friend) => friend.status === "owed")
+  const totalOwed = friends
+    .filter((friend) => friend.status === "owed")
     .reduce((total, friend) => total + friend.balance, 0);
-  const totalOwe = friends.filter((friend) => friend.status === "owe")
+  const totalOwe = friends
+    .filter((friend) => friend.status === "owe")
     .reduce((total, friend) => total + friend.balance, 0);
   const settledCount = friends.filter((friend) => friend.status === "settled").length;
 
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !messageReceiverId) return;
-    await sendPersonalMessage(messageReceiverId, messageText);
-    setMessageText("");
-    setOpenMessageDialog(false);
+  const handleMessageFriend = (friend: { id: number; name: string }) => {
+    router.push(
+      `/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.name)}`,
+    );
   };
 
   return (
@@ -39,7 +38,9 @@ export default function FriendsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Friends</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage friends and balances from your shared groups.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage friends and balances from your shared groups.
+          </p>
         </div>
         <Button onClick={() => setAddFriendOpen(true)} className="gap-2">
           <UserPlus className="size-4" /> Add Friend
@@ -61,21 +62,10 @@ export default function FriendsPage() {
         setSearch={setSearch}
         onRetry={loadFriends}
         onFriendRemoved={loadFriends}
+        // onMessage={handleMessageFriend}
       />
 
       <AddFriendDialog open={addFriendOpen} onOpenChange={setAddFriendOpen} />
-
-      <FriendMessageDialog
-        open={openMessageDialog}
-        onOpenChange={setOpenMessageDialog}
-        onSend={sendPersonalMessage}
-        receiverId={messageReceiverId}
-        receiverName={friends.find(f => f.id === messageReceiverId)?.name || "friend"}
-        messageText={messageText}
-        setMessageText={setMessageText}
-        sending={sendingMessage}
-      />
     </div>
   );
 }
-

@@ -2,9 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AddEditExpenseDialog,
-} from "@/components/expenses/add-edit-expense-dialog";
+import { AddEditExpenseDialog } from "@/components/expenses/add-edit-expense-dialog";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +24,11 @@ export default function MessagesPage() {
   const router = useRouter();
   const messageEndRef = useRef<HTMLDivElement>(null);
 
-  const {
-    state,
-    actions,
-  } = useChat();
+  const { state, actions } = useChat();
 
   const {
     groups,
+    conversations,
     messages,
     expenses,
     unread,
@@ -54,13 +50,19 @@ export default function MessagesPage() {
     currentUserId,
   } = state;
 
-  const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
-  const currentMessages = selectedId ? messages[selectedId] ?? [] : [];
-  const currentExpenses = selectedId ? expenses[selectedId] ?? [] : [];
-  const latestMessageKey = currentMessages.at(-1)?.id ?? currentMessages.at(-1)?.timestamp ?? "";
+  const selectedConversation =
+    conversations.find((c) => c.id === selectedId) ?? null;
+  const selectedGroup =
+    selectedConversation?.kind === "group"
+      ? (groups.find((g) => g.id === selectedConversation.rawId) ?? null)
+      : null;
+
+  const currentMessages = selectedId ? (messages[selectedId] ?? []) : [];
+  const currentExpenses = selectedId ? (expenses[selectedId] ?? []) : [];
+  const latestMessageKey =
+    currentMessages.at(-1)?.id ?? currentMessages.at(-1)?.timestamp ?? "";
 
   const handleInsertEmoji = (emoji: string) => {
-    const start = 0; // simplified for this refactor, usually would use a ref to input
     actions.setMessage(message + emoji);
   };
 
@@ -68,33 +70,36 @@ export default function MessagesPage() {
     <div className="mx-auto flex h-[calc(100dvh-8rem)] min-h-0 w-full max-w-full overflow-hidden rounded-xl border bg-background shadow-sm sm:h-[calc(100vh-7rem)] sm:min-h-[600px]">
       <div className={`${selectedId ? "hidden md:flex" : "flex"} w-full md:w-auto`}>
         <ChatList
-          groups={groups}
+          conversations={conversations}
           messages={messages}
           unread={unread}
           selectedId={selectedId}
           search={search}
           loading={loading}
           error={error}
-          onSelectGroup={actions.setSelectedId}
-          onRefresh={actions.loadGroups}
+          onSelect={actions.setSelectedId}
+          onRefresh={actions.loadConversations}
           onSearchChange={actions.setSearch}
         />
       </div>
 
       <section
-        className={`${selectedGroup ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
+        className={`${selectedConversation ? "flex" : "hidden"} min-h-0 min-w-0 flex-1 flex-col md:flex`}
       >
-        {selectedGroup ? (
+        {selectedConversation ? (
           <>
             <ChatHeader
-              group={selectedGroup}
-              onBack={() => actions.setSelectedId(null)}
-              onAddExpense={() => {
-                actions.setExpenseDialogOpen(true);
-                // logic for resetSelectedExpense would go here
-              }}
-              onRefresh={() => void actions.refreshConversation(selectedGroup.id)}
-              onViewGroup={() => router.push(`/groups/${selectedGroup.id}`)}
+              conversation={selectedConversation}
+              onBack={actions.closeConversation}
+              onAddExpense={() => actions.setExpenseDialogOpen(true)}
+              onRefresh={() =>
+                void actions.refreshConversation(selectedConversation.id)
+              }
+              onViewGroup={() =>
+                selectedConversation.kind === "group"
+                  ? router.push(`/groups/${selectedConversation.rawId}`)
+                  : router.push("/friends") // ADJUST to your friends/profile page
+              }
             />
 
             {conversationError && (
@@ -107,7 +112,7 @@ export default function MessagesPage() {
             )}
 
             <ChatTimeline
-              group={selectedGroup}
+              group={selectedConversation}
               messages={currentMessages}
               expenses={currentExpenses}
               username={username}
@@ -140,9 +145,9 @@ export default function MessagesPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <MessageCircle className="size-5" />
             </div>
-            <h2 className="mt-4 text-base font-semibold">Your group chats</h2>
+            <h2 className="mt-4 text-base font-semibold">Your messages</h2>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Select a group conversation to view messages and shared expenses.
+              Select a conversation to view messages and shared expenses.
             </p>
             <Button
               variant="outline"
@@ -155,14 +160,16 @@ export default function MessagesPage() {
         )}
       </section>
 
-      <AddEditExpenseDialog
-        open={expenseDialogOpen}
-        onOpenChange={actions.setExpenseDialogOpen}
-        expense={selectedExpense}
-        groups={selectedGroup ? [selectedGroup] : []}
-        defaultGroupId={selectedId ?? undefined}
-        onSubmit={actions.saveExpense}
-      />
+      {selectedGroup && (
+        <AddEditExpenseDialog
+          open={expenseDialogOpen}
+          onOpenChange={actions.setExpenseDialogOpen}
+          expense={selectedExpense}
+          groups={[selectedGroup]}
+          defaultGroupId={selectedGroup.id}
+          onSubmit={actions.saveExpense}
+        />
+      )}
 
       <Dialog
         open={Boolean(deleteTarget)}
@@ -189,7 +196,6 @@ export default function MessagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <div ref={messageEndRef} />
     </div>
   );
 }
