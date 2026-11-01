@@ -2,6 +2,45 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+async function backendSessionIsValid(token: { accessToken?: unknown; refreshToken?: unknown }) {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
+  const apiRoot = `${configuredUrl.replace(/\/+$/, "").replace(/\/api$/i, "")}/api`;
+  const accessToken = typeof token.accessToken === "string" ? token.accessToken : "";
+  const refreshToken = typeof token.refreshToken === "string" ? token.refreshToken : "";
+
+  try {
+    if (accessToken) {
+      const verification = await fetch(`${apiRoot}/token/verify/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: accessToken }),
+        cache: "no-store",
+      });
+      if (verification.ok) {
+        const result = await verification.json();
+        if (result.success && result.data?.is_valid === true) return true;
+      }
+    }
+
+    if (!refreshToken) return false;
+    const refresh = await fetch(`${apiRoot}/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+      cache: "no-store",
+    });
+    if (!refresh.ok) return false;
+    const result = await refresh.json();
+    return result.success === true && typeof result.data?.access === "string";
+  } catch (error) {
+    console.error("Could not validate the active account with the backend.", error);
+    return false;
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
@@ -9,7 +48,8 @@ export async function middleware(req: NextRequest) {
   });
 
   const hasRefreshError = token?.error === "RefreshAccessTokenError";
-  const isAuthenticated = !!token && !hasRefreshError;
+  const hasSessionToken = !!token && !hasRefreshError;
+  const isAuthenticated = hasSessionToken && await backendSessionIsValid(token);
   const isAuthPage = req.nextUrl.pathname.startsWith("/auth");
 
   if ((!isAuthenticated || hasRefreshError) && !isAuthPage) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
+import { signOut as clearAuthSession, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import {
   Bell,
@@ -15,6 +15,7 @@ import {
   Shield,
   Smartphone,
   Sun,
+  Trash2,
   UserRound,
   Wallet,
 } from "lucide-react";
@@ -30,7 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { apiGet, apiPatch, apiPost, getApiErrorMessage, type UserProfile } from "@/lib/api/billbuddy";
+import { apiGet, apiPatch, apiPost, apiRequest, getApiErrorMessage, type UserProfile } from "@/lib/api/billbuddy";
 import {
   getCurrencySymbol,
   getTimezoneOffsetLabel,
@@ -271,44 +272,44 @@ function PreferencesSettings() {
               <Button variant="outline" size="sm" className="mt-3" onClick={() => void reload().catch(() => undefined)}>Retry</Button>
             </div>
           ) : <>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <SettingRow icon={Wallet} title={t("currency")} description="Display currency only; amounts are not converted.">
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              <PreferenceOption icon={Wallet} title={t("currency")} description="Display currency only; amounts are not converted.">
                 <Select value={currency} onValueChange={(value) => { setCurrency(value); setHasSaved(false); }}>
-                  <SelectTrigger aria-label={t("selectCurrency")} className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={t("selectCurrency")} className="w-full min-w-0"><SelectValue className="min-w-0 flex-1 truncate" /></SelectTrigger>
                   <SelectContent>
                     {supportedCurrencies.map((item) => <SelectItem key={item.code} value={item.code}>
                       {getCurrencySymbol(item.code, language)} · {item.code} — {item.name}
                     </SelectItem>)}
                   </SelectContent>
                 </Select>
-              </SettingRow>
-              <SettingRow icon={Globe} title={t("language")} description="Interface language. Untranslated text remains in English.">
+              </PreferenceOption>
+              <PreferenceOption icon={Globe} title={t("language")} description="Interface language. Untranslated text remains in English.">
                 <Select value={language} onValueChange={(value: "en" | "ne") => { setLanguage(value); setHasSaved(false); }}>
-                  <SelectTrigger aria-label={t("selectLanguage")} className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={t("selectLanguage")} className="w-full min-w-0"><SelectValue className="min-w-0 flex-1 truncate" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English</SelectItem>
                     <SelectItem value="ne">नेपाली (Nepali)</SelectItem>
                   </SelectContent>
                 </Select>
-              </SettingRow>
-              <SettingRow icon={Globe} title={t("timezone")} description="Used to display timestamps and event times.">
+              </PreferenceOption>
+              <PreferenceOption icon={Globe} title={t("timezone")} description="Used to display timestamps and event times.">
                 <Select value={timezone} onValueChange={(value) => { setTimezone(value); setHasSaved(false); }}>
-                  <SelectTrigger aria-label={t("selectTimezone")} className="w-full sm:w-64"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={t("selectTimezone")} className="w-full min-w-0"><SelectValue className="min-w-0 flex-1 truncate" /></SelectTrigger>
                   <SelectContent>
                     {supportedTimezones.map((item) => <SelectItem key={item} value={item}>
                       {item} ({getTimezoneOffsetLabel(item)})
                     </SelectItem>)}
                   </SelectContent>
                 </Select>
-              </SettingRow>
+              </PreferenceOption>
             </div>
             <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <div aria-live="polite">
+              <div className="min-w-0" aria-live="polite">
                 {preferencesError && <p role="alert" className="text-sm text-destructive">{preferencesError}</p>}
                 {hasSaved && !preferencesError && <p className="text-sm text-emerald-600 dark:text-emerald-400">{t("saved")}</p>}
                 {isDirty && <p className="text-xs text-muted-foreground">You have unsaved preference changes.</p>}
               </div>
-              <Button onClick={() => void saveRegionalPreferences()} disabled={!isDirty || savingPreferences}>
+              <Button className="w-full shrink-0 sm:w-auto" onClick={() => void saveRegionalPreferences()} disabled={!isDirty || savingPreferences}>
                 {savingPreferences ? t("saving") : t("saveChanges")}
               </Button>
             </div>
@@ -387,6 +388,39 @@ function SecuritySettings({ hasPassword }: { hasPassword: boolean }) {
 
 function AccountSettings({ profile }: { profile: UserProfile | null }) {
   const signOut = useSignOut();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [password, setPassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiRequest("DELETE", "/account/delete/", {
+        confirmation,
+        ...(password ? { password } : {}),
+      });
+    } catch (requestError) {
+      const message = getApiErrorMessage(requestError);
+      setDeleteError(message);
+      toast.error(message);
+      setDeleting(false);
+      return;
+    }
+
+    toast.success("Your account has been deleted.");
+    try {
+      await clearAuthSession({ callbackUrl: "/auth/login" });
+    } catch (signOutError) {
+      console.error("Could not clear the local session after account deletion.", signOutError);
+      window.location.assign("/auth/login");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SettingsHeader title="Account" description="Manage your BillBuddy account and current session." />
@@ -399,9 +433,35 @@ function AccountSettings({ profile }: { profile: UserProfile | null }) {
         <CardContent><Button variant="outline" className="gap-2" onClick={() => void signOut()}><LogOut className="size-4" /> Sign out</Button></CardContent>
       </Card>
       <Card className="border-destructive/30">
-        <CardHeader><CardTitle className="text-base text-destructive">Account deletion</CardTitle><CardDescription>The current backend does not provide an account deletion endpoint.</CardDescription></CardHeader>
-        <CardContent><p className="text-sm text-muted-foreground">To request account removal, contact BillBuddy support. This frontend will not simulate deletion.</p></CardContent>
+        <CardHeader><CardTitle className="text-base text-destructive">Account deletion</CardTitle><CardDescription>Deleting your account permanently disables access. Your financial history and messages are retained.</CardDescription></CardHeader>
+        <CardContent><Button variant="destructive" className="gap-2" onClick={() => { setConfirmation(""); setPassword(""); setDeleteError(null); setDeleteOpen(true); }}><Trash2 className="size-4" /> Delete account</Button></CardContent>
       </Card>
+      <Dialog open={deleteOpen} onOpenChange={(open) => { if (!deleting) setDeleteOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete your account?</DialogTitle>
+            <DialogDescription>
+              Account access will be permanently disabled and active sessions will be revoked. Existing expenses, income, transactions, and messages will remain for historical records. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-account-password">Current password (if applicable)</Label>
+            <Input id="delete-account-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            <p className="text-xs text-muted-foreground">Required for accounts with a password; leave blank for Google-only accounts.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="delete-account-confirmation">Type DELETE to confirm</Label>
+            <Input id="delete-account-confirmation" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
+          </div>
+          {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleting || confirmation !== "DELETE"} onClick={() => void deleteAccount()}>
+              {deleting ? "Deleting..." : "Permanently delete account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -453,6 +513,33 @@ function ChangePasswordDialog({ open, onOpenChange, hasPassword }: { open: boole
 
 function SettingsHeader({ title, description }: { title: string; description: string }) {
   return <div><h2 className="text-lg font-semibold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>;
+}
+
+function PreferenceOption({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: typeof CircleUserRound;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-3 rounded-lg border p-3 sm:p-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+          <Icon className="size-4 text-muted-foreground" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">{title}</p>
+          <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
 }
 
 function SettingRow({ icon: Icon, title, description, children }: { icon: typeof CircleUserRound; title: string; description: string; children: React.ReactNode }) {

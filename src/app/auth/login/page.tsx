@@ -80,12 +80,14 @@ export default function LoginPage() {
     setLoading(false);
 
     if (res?.error) {
-      if (res.code === "ACCOUNT_NOT_ACTIVATED") {
+      if (res.code === "EMAIL_NOT_VERIFIED" || res.code === "ACCOUNT_NOT_ACTIVATED") {
         setModalErrorMessage(
-          "Your account has not been activated yet. Please verify your email.",
+          "Your email address has not been verified yet. Verify it to sign in.",
         );
 
         setShowVerifyModal(true);
+      } else if (res.code === "ACCOUNT_DISABLED") {
+        toast.error("This account has been deactivated and cannot sign in.");
       } else {
         toast.error(res.code || "Invalid email or password");
       }

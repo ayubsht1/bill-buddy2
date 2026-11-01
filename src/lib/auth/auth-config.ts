@@ -148,12 +148,19 @@ export const authOptions: NextAuthConfig = {
           console.error("Credentials login failed", error);
           if (axios.isAxiosError(error) && error.response?.data) {
             const data = error.response.data as {
-              data?: { is_active?: boolean; message?: string };
+              data?: {
+                is_active?: boolean;
+                email_verified?: boolean;
+                message?: string;
+              };
               message?: string;
               detail?: string;
             };
             if (data.data?.is_active === false) {
-              throw new DjangoAuthError("ACCOUNT_NOT_ACTIVATED");
+              throw new DjangoAuthError("ACCOUNT_DISABLED");
+            }
+            if (data.data?.email_verified === false) {
+              throw new DjangoAuthError("EMAIL_NOT_VERIFIED");
             }
             throw new DjangoAuthError(
               data.data?.message || data.message || data.detail || "Invalid email or password",

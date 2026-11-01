@@ -154,6 +154,7 @@ export interface UserProfile {
   lastName: string;
   profilePicture?: string | null;
   is_active: boolean;
+  email_verified_at: string | null;
   has_password: boolean;
   currency: string;
   language: "en" | "ne";
