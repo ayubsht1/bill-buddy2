@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
 
 export type ExpenseType = "Personal" | "Group";
+export type PersonalTransactionType = "INCOME" | "EXPENSE";
 export type SplitType = "EQUAL" | "EXACT" | "PERCENT";
 export type ExpenseSplitItem = { user_id: number; amount?: number; percentage?: number };
 export type ExpenseFormData = {
@@ -18,6 +19,8 @@ export type ExpenseFormData = {
   amount: number;
   category: string;
   type: ExpenseType;
+  transactionType?: PersonalTransactionType;
+  paymentMethod?: string;
   group?: string;
   groupId?: number;
   date: string;
@@ -32,10 +35,11 @@ interface AddEditExpenseDialogProps {
   expense?: ExpenseFormData | null;
   groups?: GroupOption[];
   defaultGroupId?: number;
+  defaultTransactionType?: PersonalTransactionType;
   onSubmit?: (expense: ExpenseFormData) => void | Promise<void>;
 }
 
-const categories = [
+const expenseCategories = [
   { label: "Food & Dining", value: "FOOD" },
   { label: "Shopping", value: "SHOPPING" },
   { label: "Bills & Utilities", value: "UTILITIES" },
@@ -45,12 +49,29 @@ const categories = [
   { label: "Other", value: "OTHER" },
 ];
 
-export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], defaultGroupId, onSubmit }: AddEditExpenseDialogProps) {
+const incomeCategories = [
+  { label: "Salary / Paycheck", value: "SALARY" },
+  { label: "Freelance / Side Hustle", value: "FREELANCE" },
+  { label: "Investments / Interest", value: "INVESTMENT" },
+  { label: "Gifts / Allowances", value: "GIFT" },
+  { label: "Other", value: "OTHER" },
+];
+const paymentMethods = [
+  { label: "Cash", value: "CASH" },
+  { label: "Card", value: "CARD" },
+  { label: "Bank transfer", value: "BANK_TRANSFER" },
+  { label: "Mobile wallet", value: "MOBILE_WALLET" },
+  { label: "Other", value: "OTHER" },
+];
+
+export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], defaultGroupId, defaultTransactionType = "EXPENSE", onSubmit }: AddEditExpenseDialogProps) {
   const isEditing = Boolean(expense);
   const [expenseType, setExpenseType] = useState<ExpenseType>("Personal");
+  const [transactionType, setTransactionType] = useState<PersonalTransactionType>("EXPENSE");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("FOOD");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [groupId, setGroupId] = useState<number | null>(null);
   const [date, setDate] = useState("");
   const [splitType, setSplitType] = useState<SplitType>("EQUAL");
@@ -72,9 +93,11 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
     if (!open) return;
     if (expense) {
       setExpenseType(expense.type);
+      setTransactionType(expense.transactionType ?? "EXPENSE");
       setTitle(expense.title);
       setAmount(String(expense.amount));
       setCategory(expense.category);
+      setPaymentMethod(expense.paymentMethod ?? "");
       setGroupId(expense.groupId ?? null);
       setDate(toInputDate(expense.date));
       setSplitType(expense.splitType ?? "EQUAL");
@@ -82,24 +105,26 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
       setParticipants(selected);
       setSplitValues(Object.fromEntries((expense.splitData ?? []).map((part) => [part.user_id, String(part.amount ?? part.percentage ?? "")])));
     } else {
-      resetForm();
+      resetForm(defaultTransactionType);
       if (defaultGroupId) {
         setExpenseType("Group");
         setGroupId(defaultGroupId);
       }
     }
-  }, [open, expense, defaultGroupId]);
+  }, [open, expense, defaultGroupId, defaultTransactionType]);
 
   useEffect(() => {
     if (!activeGroup) return;
     setParticipants((current) => current.length ? current.filter((id) => activeGroup.members.some((member) => member.user.id === id)) : activeGroup.members.map((member) => member.user.id));
   }, [activeGroup]);
 
-  const resetForm = () => {
+  const resetForm = (initialTransactionType: PersonalTransactionType = "EXPENSE") => {
     setExpenseType("Personal");
+    setTransactionType(initialTransactionType);
     setTitle("");
     setAmount("");
-    setCategory("FOOD");
+    setCategory(initialTransactionType === "INCOME" ? "SALARY" : "FOOD");
+    setPaymentMethod("");
     setGroupId(null);
     setDate(new Date().toISOString().slice(0, 10));
     setSplitType("EQUAL");
@@ -110,7 +135,7 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
 
   const handleSubmit = async () => {
     const numericAmount = Number(amount);
-    if (!title.trim()) return setValidationError("Enter an expense description.");
+    if (!title.trim()) return setValidationError(`Enter a ${transactionType.toLowerCase()} description.`);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setValidationError("Amount must be greater than zero.");
     if (expenseType === "Personal" && !date) return setValidationError("Choose an expense date.");
     if (expenseType === "Group" && !activeGroup) return setValidationError("Select a group.");
@@ -126,6 +151,8 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
         amount: numericAmount,
         category,
         type: expenseType,
+        transactionType,
+        paymentMethod,
         group: activeGroup?.name,
         groupId: activeGroup?.id,
         date,
@@ -141,25 +168,39 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
   };
 
   const handleOpenChange = (value: boolean) => {
-    if (!value) resetForm();
+    if (!value) resetForm(defaultTransactionType);
     onOpenChange(value);
   };
+
+  const categories = transactionType === "INCOME" ? incomeCategories : expenseCategories;
+  const transactionLabel = transactionType === "INCOME" ? "income" : "expense";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[540px]">
-        <DialogHeader><DialogTitle>{isEditing ? "Edit expense" : "Add expense"}</DialogTitle><DialogDescription>{isEditing ? "Update the details and participants for this expense." : "Record a personal transaction or split a group expense."}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{isEditing ? `Edit ${transactionLabel}` : expenseType === "Group" ? "Add group expense" : `Add ${transactionLabel}`}</DialogTitle><DialogDescription>{isEditing ? "Update the details for this transaction." : "Record personal income or an expense, or split a group expense."}</DialogDescription></DialogHeader>
         <div className="space-y-5 py-2">
-          <div className="space-y-2"><Label>Expense type</Label><div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2"><Label>Record type</Label><div className="grid grid-cols-2 gap-2">
             {(["Personal", "Group"] as const).map((type) => <button key={type} type="button" disabled={isEditing} onClick={() => setExpenseType(type)} className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${expenseType === type ? "border-primary bg-primary/5" : "hover:bg-muted/50"} ${isEditing ? "cursor-not-allowed opacity-60" : ""}`}><div className={`flex size-9 items-center justify-center rounded-lg ${expenseType === type ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{type === "Personal" ? <Receipt className="size-4" /> : <Users className="size-4" />}</div><div><p className="text-sm font-medium">{type}</p><p className="text-xs text-muted-foreground">{type === "Personal" ? "Only for you" : "Split with group members"}</p></div>{expenseType === type && <Check className="ml-auto size-4 text-primary" />}</button>)}
           </div></div>
+          {expenseType === "Personal" && <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/50 p-1" aria-label="Transaction type">
+            {(["EXPENSE", "INCOME"] as const).map((type) => <button key={type} type="button" onClick={() => {
+              setTransactionType(type);
+              if (!(type === "INCOME" ? incomeCategories : expenseCategories).some((item) => item.value === category)) {
+                setCategory(type === "INCOME" ? "SALARY" : "FOOD");
+              }
+            }} className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${transactionType === type ? type === "INCOME" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white" : "text-muted-foreground hover:bg-background"}`}>
+              {type === "INCOME" ? "Income" : "Expense"}
+            </button>)}
+          </div>}
           <div className="grid gap-4 sm:grid-cols-[1fr_150px]">
-            <div className="space-y-2"><Label htmlFor="expense-title">Description</Label><Input id="expense-title" maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Dinner" autoFocus /></div>
+            <div className="space-y-2"><Label htmlFor="expense-title">Description</Label><Input id="expense-title" maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} placeholder={transactionType === "INCOME" ? "e.g. Monthly salary" : "e.g. Dinner"} autoFocus /></div>
             <div className="space-y-2"><Label htmlFor="expense-amount">Amount</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rs.</span><Input id="expense-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="pl-10" /></div></div>
           </div>
           {expenseType === "Personal" ? <>
             <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Category</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{categories.find((item) => item.value === category)?.label}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">{categories.map((item) => <DropdownMenuItem key={item.value} onClick={() => setCategory(item.value)}>{item.label}{category === item.value && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
               <div className="space-y-2"><Label htmlFor="expense-date">Date</Label><div className="relative"><CalendarDays className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="expense-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="pl-9" /></div></div></div>
+            <div className="space-y-2"><Label>Payment method <span className="font-normal text-muted-foreground">(optional)</span></Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{paymentMethods.find((item) => item.value === paymentMethod)?.label ?? "Not specified"}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]"><DropdownMenuItem onClick={() => setPaymentMethod("")}>Not specified{!paymentMethod && <Check className="ml-auto size-4" />}</DropdownMenuItem>{paymentMethods.map((item) => <DropdownMenuItem key={item.value} onClick={() => setPaymentMethod(item.value)}>{item.label}{paymentMethod === item.value && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
           </> : <>
             <div className="space-y-2"><Label>Group</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{activeGroup?.name ?? "Select a group"}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">{groups.map((group) => <DropdownMenuItem key={group.id} onClick={() => setGroupId(group.id)}>{group.name}{groupId === group.id && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
             {activeGroup && <div className="space-y-3 rounded-lg border p-4"><div className="flex items-center justify-between gap-3"><Label>Participants</Label><select className="h-9 rounded-md border bg-background px-2 text-sm" value={splitType} onChange={(event) => setSplitType(event.target.value as SplitType)}><option value="EQUAL">Equal split</option><option value="EXACT">Custom amounts</option><option value="PERCENT">Percent split</option></select></div>
@@ -173,7 +214,7 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
           </>}
           {validationError && <p role="alert" className="text-sm text-destructive">{validationError}</p>}
         </div>
-        <DialogFooter className="gap-2 sm:gap-0"><Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>Cancel</Button><Button onClick={() => void handleSubmit()} disabled={saving || !title.trim() || !amount.trim() || (expenseType === "Group" && (!groupId || participants.length === 0))}>{saving ? "Saving..." : isEditing ? "Save Changes" : "Add Expense"}</Button></DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0"><Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>Cancel</Button><Button onClick={() => void handleSubmit()} disabled={saving || !title.trim() || !amount.trim() || (expenseType === "Group" && (!groupId || participants.length === 0))}>{saving ? "Saving..." : isEditing ? "Save changes" : expenseType === "Group" ? "Add group expense" : `Add ${transactionLabel}`}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

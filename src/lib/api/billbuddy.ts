@@ -25,6 +25,7 @@ export interface PersonalExpense {
   description: string;
   amount: number | string;
   category: string;
+  payment_method: string;
   date: string;
   created_at?: string;
 }

@@ -21,18 +21,20 @@ export const expenseApi = {
     return apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`);
   },
 
-  async savePersonalExpense(id: number | null, data: any): Promise<void> {
+  async savePersonalExpense(id: number | null, data: unknown): Promise<void> {
     if (id) {
-      return apiPatch(`/expenses/personal/${id}/`, data);
+      await apiPatch(`/expenses/personal/${id}/`, data);
+      return;
     }
-    return apiPost("/expenses/personal/", data);
+    await apiPost("/expenses/personal/", data);
   },
 
-  async saveGroupExpense(id: number | null, groupId: number, data: any): Promise<void> {
+  async saveGroupExpense(id: number | null, groupId: number, data: unknown): Promise<void> {
     if (id) {
-      return apiPatch(`/expenses/${id}/`, data);
+      await apiPatch(`/expenses/${id}/`, data);
+      return;
     }
-    return apiPost(`/expenses/group/${groupId}/`, data);
+    await apiPost(`/expenses/group/${groupId}/`, data);
   },
 
   async deleteExpense(id: number, type: "Personal" | "Group"): Promise<void> {

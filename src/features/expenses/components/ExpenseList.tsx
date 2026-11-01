@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ExpenseRow } from "@/features/expenses/components/ExpenseRow";
 import type { ExpenseRowModel } from "@/features/expenses/hooks/useExpenses";
-import { formatApiDate } from "@/lib/api/billbuddy";
+
+const categoryLabels: Record<string, string> = {
+  FOOD: "Food & Dining",
+  SHOPPING: "Shopping",
+  UTILITIES: "Bills & Utilities",
+  TRANSPORT: "Transportation",
+  ENTERTAINMENT: "Entertainment",
+  GROCERIES: "Groceries",
+  SALARY: "Salary / Paycheck",
+  FREELANCE: "Freelance / Side Hustle",
+  INVESTMENT: "Investments / Interest",
+  GIFT: "Gifts / Allowances",
+  OTHER: "Other",
+};
 
 interface ExpenseListProps {
   expenses: ExpenseRowModel[];
@@ -34,9 +48,29 @@ export function ExpenseList({
   activeFilter,
   setActiveFilter,
 }: ExpenseListProps) {
+  const [transactionFilter, setTransactionFilter] = useState<"All" | "INCOME" | "EXPENSE">("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const categories = useMemo(() => [...new Set(
+    expenses
+      .filter((expense) => expense.type === "Personal")
+      .filter((expense) => transactionFilter === "All" || expense.transactionType === transactionFilter)
+      .map((expense) => expense.category)
+  )].sort(), [expenses, transactionFilter]);
+
   const filteredExpenses = expenses.filter((expense) => {
     const matchesType = activeFilter === "All" || (activeFilter === "Personal" ? expense.type === "Personal" : expense.type === "Group");
-    return matchesType && `${expense.title} ${expense.group ?? ""} ${expense.paidBy}`.toLowerCase().includes(search.toLowerCase().trim());
+    const matchesTransaction = transactionFilter === "All" || (
+      expense.type === "Personal" && expense.transactionType === transactionFilter
+    );
+    const matchesCategory = categoryFilter === "All" || expense.category === categoryFilter;
+    const matchesStart = !startDate || expense.date >= startDate;
+    const matchesEnd = !endDate || expense.date <= endDate;
+    const searchText = `${expense.title} ${expense.category} ${expense.group ?? ""} ${expense.paidBy} ${expense.paymentMethod ?? ""}`;
+    return matchesType && matchesTransaction && matchesCategory && matchesStart && matchesEnd &&
+      searchText.toLowerCase().includes(search.toLowerCase().trim());
   });
 
   return (
@@ -44,9 +78,9 @@ export function ExpenseList({
       <CardHeader className="border-b">
         <div className="flex flex-col gap-4">
           <div>
-            <CardTitle className="text-base">Expense history</CardTitle>
+            <CardTitle className="text-base">Transaction history</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Group records also show each participant's share.
+              Personal income and expenses alongside shared group records.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -55,7 +89,7 @@ export function ExpenseList({
               <Input 
                 value={search} 
                 onChange={(event) => setSearch(event.target.value)} 
-                placeholder="Search expenses, groups, or payers..." 
+                placeholder="Search transactions, groups, or payers..."
                 className="pl-9" 
               />
             </div>
@@ -71,6 +105,45 @@ export function ExpenseList({
                 </Button>
               ))}
             </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex gap-1 rounded-lg bg-muted/50 p-1 sm:col-span-2 lg:col-span-1">
+              {([
+                ["All", "All transactions"],
+                ["INCOME", "Income"],
+                ["EXPENSE", "Expenses"],
+              ] as const).map(([filter, label]) => (
+                <Button
+                  key={filter}
+                  size="sm"
+                  className="min-w-0 flex-1 px-2"
+                  variant={transactionFilter === filter ? "default" : "ghost"}
+                  onClick={() => {
+                    setTransactionFilter(filter);
+                    setCategoryFilter("All");
+                  }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <select
+              aria-label="Filter by category"
+              className="h-9 rounded-md border bg-background px-3 text-sm"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="All">All categories</option>
+              {categories.map((category) => <option key={category} value={category}>{categoryLabels[category] ?? category}</option>)}
+            </select>
+            <label className="flex items-center gap-2 rounded-md border px-3 text-xs text-muted-foreground">
+              From
+              <Input aria-label="Start date" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="border-0 px-0 text-sm text-foreground shadow-none focus-visible:ring-0" />
+            </label>
+            <label className="flex items-center gap-2 rounded-md border px-3 text-xs text-muted-foreground">
+              To
+              <Input aria-label="End date" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="border-0 px-0 text-sm text-foreground shadow-none focus-visible:ring-0" />
+            </label>
           </div>
         </div>
       </CardHeader>
@@ -106,20 +179,12 @@ export function ExpenseList({
                 <span className="text-xs">🧾</span>
               </div>
             </div>
-            <h3 className="mt-4 text-sm font-semibold">
-              {search ? "No expenses found" : "No expenses yet"}
-            </h3>
+            <h3 className="mt-4 text-sm font-semibold">{search || activeFilter !== "All" || transactionFilter !== "All" || categoryFilter !== "All" || startDate || endDate ? "No transactions found" : "No transactions yet"}</h3>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              {search 
-                ? "Try another search or filter." 
-                : "Add a personal expense or a shared group expense to get started."}
+              {search || activeFilter !== "All" || transactionFilter !== "All" || categoryFilter !== "All" || startDate || endDate
+                ? "Try adjusting your search or filters."
+                : "Add personal income or an expense to get started."}
             </p>
-            {!search && (
-              <Button className="mt-5 gap-2" onClick={() => {}}>
-                {/* Placeholder for add expense trigger */}
-                <span className="text-xs">Add Expense</span>
-              </Button>
-            )}
           </div>
         )}
       </CardContent>

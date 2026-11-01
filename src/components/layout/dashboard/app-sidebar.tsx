@@ -35,7 +35,7 @@ const data = {
       icon: LayoutDashboard,
     },
     {
-      title: "Expenses",
+      title: "Money tracker",
       url: "/expenses",
       icon: Receipt,
     },

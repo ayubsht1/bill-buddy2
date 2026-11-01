@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Receipt, Wallet, ArrowDownUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowDownUp, ArrowUpRight, PiggyBank, Plus, Wallet } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AddEditExpenseDialog } from "@/components/expenses/add-edit-expense-dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +18,9 @@ import { useExpenses, type ExpenseRowModel } from "@/features/expenses/hooks/use
 import { SummaryCard } from "@/features/expenses/components/SummaryCard";
 import { ExpenseList } from "@/features/expenses/components/ExpenseList";
 
+const money = (value: number) => `Rs. ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
 export default function ExpensesPage() {
   const { state, actions } = useExpenses();
   const { expenses, groups, loading, error, deleting } = state;
@@ -23,11 +28,13 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"All" | "Personal" | "Groups">("All");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [defaultTransactionType, setDefaultTransactionType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRowModel | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ExpenseRowModel | null>(null);
 
-  const openAdd = () => { 
+  const openAdd = (transactionType: "INCOME" | "EXPENSE" = "EXPENSE") => {
     setSelectedExpense(null); 
+    setDefaultTransactionType(transactionType);
     setDialogOpen(true); 
   };
 
@@ -40,43 +47,114 @@ export default function ExpensesPage() {
     setDeleteTarget(expense);
   };
 
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const thisMonth = expenses.filter((expense) => expense.date.slice(0, 7) === monthKey);
-  const totalSpent = thisMonth.reduce((sum, expense) => sum + expense.amount, 0);
-  const groupSpend = thisMonth.filter((expense) => expense.type === "Group").reduce((sum, expense) => sum + expense.amount, 0);
+  const personalTransactions = useMemo(
+    () => expenses.filter((expense) => expense.type === "Personal"),
+    [expenses],
+  );
+  const totalIncome = personalTransactions
+    .filter((transaction) => transaction.transactionType === "INCOME")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalExpenses = personalTransactions
+    .filter((transaction) => transaction.transactionType === "EXPENSE")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const currentMonthKey = monthKey(new Date());
+  const currentMonthTransactions = personalTransactions.filter((transaction) => transaction.date.slice(0, 7) === currentMonthKey);
+  const monthlySavings = currentMonthTransactions.reduce(
+    (sum, transaction) => sum + (transaction.transactionType === "INCOME" ? transaction.amount : -transaction.amount),
+    0,
+  );
+  const cashFlow = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, index) => {
+      const month = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
+      const key = monthKey(month);
+      const rows = personalTransactions.filter((transaction) => transaction.date.slice(0, 7) === key);
+      return {
+        month: month.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+        income: rows.filter((transaction) => transaction.transactionType === "INCOME").reduce((sum, transaction) => sum + transaction.amount, 0),
+        expense: rows.filter((transaction) => transaction.transactionType === "EXPENSE").reduce((sum, transaction) => sum + transaction.amount, 0),
+      };
+    });
+  }, [personalTransactions]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Expenses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Personal transactions and shared group expenses.</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">Personal finance</p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Personal Money Tracker</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Track your income, expenses, and monthly cash flow.</p>
         </div>
-        <Button className="gap-2" onClick={openAdd}>
-          <Plus className="size-4" /> Add Expense
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => openAdd("INCOME")}>
+            <Plus className="size-4" /> Add Transaction
+          </Button>
+          {/* <Button className="gap-2" onClick={() => openAdd("EXPENSE")}>
+            <Plus className="size-4" /> Add expense
+          </Button> */}
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryCard 
-          title="This month" 
-          value={`Rs. ${totalSpent.toLocaleString()}`} 
-          description={`${thisMonth.length} recorded transactions`} 
-          icon={Wallet} 
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          title="Total balance"
+          value={money(totalIncome - totalExpenses)}
+          description="Income minus expenses to date"
+          icon={Wallet}
         />
-        <SummaryCard 
-          title="Personal expenses" 
-          value={`Rs. ${thisMonth.filter((item) => item.type === "Personal").reduce((sum, item) => sum + item.amount, 0).toLocaleString()}`} 
-          description="Current month" 
-          icon={Receipt} 
+        <SummaryCard
+          title="Total income"
+          value={money(totalIncome)}
+          description="All recorded personal income"
+          icon={ArrowDownLeft}
         />
-        <SummaryCard 
-          title="Group expenses" 
-          value={`Rs. ${groupSpend.toLocaleString()}`} 
-          description="Full expense totals" 
-          icon={ArrowDownUp} 
+        <SummaryCard
+          title="Total expenses"
+          value={money(totalExpenses)}
+          description="All recorded personal expenses"
+          icon={ArrowUpRight}
+        />
+        <SummaryCard
+          title="Net savings"
+          value={money(monthlySavings)}
+          description="Income minus expenses this month"
+          icon={PiggyBank}
         />
       </div>
+
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ArrowDownUp className="size-5" /></div>
+            <div>
+              <CardTitle className="text-base">Income vs. expenses</CardTitle>
+              <CardDescription className="mt-1">Your personal cash flow over the last six months.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="h-64 animate-pulse rounded-lg bg-muted/50" />
+          ) : cashFlow.some((month) => month.income || month.expense) ? (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cashFlow} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value) => money(Number(value))} />
+                  <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 text-center text-sm text-muted-foreground">
+              Add income or expenses to see your spending trends.
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <ExpenseList 
         expenses={expenses}
@@ -94,17 +172,18 @@ export default function ExpensesPage() {
       <AddEditExpenseDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 
-        expense={selectedExpense as any}
+        expense={selectedExpense}
         groups={groups} 
+        defaultTransactionType={defaultTransactionType}
         onSubmit={actions.saveExpense} 
       />
 
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this expense?</DialogTitle>
+            <DialogTitle>Delete this transaction?</DialogTitle>
             <DialogDescription>
-              This will permanently remove “{deleteTarget?.title}” and recalculate its group shares where applicable.
+              This will permanently remove “{deleteTarget?.title}”{deleteTarget?.type === "Group" ? " and recalculate its group shares" : ""}.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -116,11 +195,13 @@ export default function ExpensesPage() {
               disabled={deleting} 
               onClick={() => {
                 if (deleteTarget) {
-                  void actions.deleteExpense(deleteTarget);
+                  void actions.deleteExpense(deleteTarget).then((deleted) => {
+                    if (deleted) setDeleteTarget(null);
+                  });
                 }
               }}
             >
-              {deleting ? "Deleting..." : "Delete expense"}
+              {deleting ? "Deleting..." : "Delete transaction"}
             </Button>
           </DialogFooter>
         </DialogContent>
