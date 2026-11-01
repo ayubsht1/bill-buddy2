@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 
 import { NavMain } from "@/components/layout/dashboard/nav-main"
+import { useAppPreferences } from "@/providers/preferences-provider"
 import {
   Sidebar,
   SidebarContent,
@@ -84,6 +85,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { toggleSidebar } = useSidebar()
+  const { t } = useAppPreferences()
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -115,11 +117,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={toggleSidebar}
-              tooltip="Toggle Sidebar"
+              tooltip={t("toggleSidebar")}
               className="cursor-pointer"
             >
               <PanelLeft className="size-4" />
-              <span>Toggle Sidebar</span>
+              <span>{t("toggleSidebar")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

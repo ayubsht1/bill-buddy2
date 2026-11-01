@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { GroupMessage } from "@/lib/api/billbuddy";
 import type { Conversation } from "../types/types";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface ChatListProps {
   conversations: Conversation[];
@@ -32,6 +33,7 @@ export const ChatList = memo(function ChatList({
   onRefresh,
   onSearchChange,
 }: ChatListProps) {
+  const { formatTime } = useAppPreferences();
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return conversations
@@ -103,10 +105,7 @@ export const ChatList = memo(function ChatList({
                   <p className="truncate text-sm font-medium">{c.title}</p>
                   {last?.timestamp && (
                     <span className="shrink-0 text-[10px] text-muted-foreground">
-                      {new Date(last.timestamp).toLocaleTimeString([], {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
+                      {formatTime(last.timestamp)}
                     </span>
                   )}
                 </div>

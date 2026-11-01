@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet, apiPost, formatApiDate, getApiErrorMessage, initials, resolveProfilePictureUrl, type FriendRequest, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 type Request = { id: number; person: UserSummary; createdAt: string };
 
 export default function FriendRequestsPage() {
+  const { preferences } = useAppPreferences();
   const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
   const [receivedRequests, setReceivedRequests] = useState<Request[]>([]);
   const [sentRequests, setSentRequests] = useState<Request[]>([]);
@@ -74,7 +76,7 @@ export default function FriendRequestsPage() {
                 return (
                   <div key={request.id} className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center">
                     <Avatar className="size-11 shrink-0"><AvatarImage src={resolveProfilePictureUrl(request.person.profile_picture)} alt={name} /><AvatarFallback>{initials(name)}</AvatarFallback></Avatar>
-                    <div className="min-w-0 flex-1"><p className="text-sm font-medium">{name}</p><p className="mt-1 text-xs text-muted-foreground">@{request.person.username}</p><p className="mt-1 text-xs text-muted-foreground">{formatApiDate(request.createdAt)}</p></div>
+                    <div className="min-w-0 flex-1"><p className="text-sm font-medium">{name}</p><p className="mt-1 text-xs text-muted-foreground">@{request.person.username}</p><p className="mt-1 text-xs text-muted-foreground">{formatApiDate(request.createdAt, preferences.timezone, preferences.language)}</p></div>
                     {activeTab === "received" ? (
                       <div className="flex gap-2"><Button size="sm" disabled={busyId === request.id} onClick={() => void performAction(request, "accept")} className="gap-1.5"><Check className="size-3.5" /> Accept</Button><Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => void performAction(request, "reject")} className="gap-1.5"><X className="size-3.5" /> Reject</Button></div>
                     ) : <Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => void performAction(request, "cancel")} className="gap-1.5"><UserRoundX className="size-3.5" /> Cancel</Button>}

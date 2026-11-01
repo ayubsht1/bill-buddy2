@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GroupBalance, SuggestedSettlement } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface GroupBalancesSectionProps {
   balances: GroupBalance[];
@@ -16,6 +17,7 @@ export function GroupBalancesSection({
   suggested = [],
   onManageSettlementsClick,
 }: GroupBalancesSectionProps) {
+  const { formatCurrency } = useAppPreferences();
   return (
     <Card className="overflow-hidden">
       <CardHeader className="border-b">
@@ -53,7 +55,7 @@ export function GroupBalancesSection({
                   : balance.net_balance > 0
                   ? "is owed "
                   : "settled"}
-                Rs. {Math.abs(balance.net_balance).toLocaleString()}
+                {formatCurrency(Math.abs(balance.net_balance))}
               </p>
             </div>
           ))}
@@ -65,7 +67,7 @@ export function GroupBalancesSection({
               <p key={index} className="text-sm text-muted-foreground">
                 @{item.debtor.username} pays @{item.creditor.username}{" "}
                 <span className="font-medium text-foreground">
-                  Rs. {item.amount.toLocaleString()}
+                  {formatCurrency(item.amount)}
                 </span>
               </p>
             ))}

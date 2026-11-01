@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GroupExpense, Group } from "@/lib/api/billbuddy";
 import { formatApiDate } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface GroupExpensesSectionProps {
   expenses: GroupExpense[];
@@ -23,6 +24,7 @@ export function GroupExpensesSection({
   onEditExpense,
   onDeleteExpense,
 }: GroupExpensesSectionProps) {
+  const { formatCurrency, preferences } = useAppPreferences();
   return (
     <Card className="overflow-hidden">
       <CardHeader className="border-b">
@@ -61,7 +63,7 @@ export function GroupExpensesSection({
                       {expense.description}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Paid by @{paidBy} · {formatApiDate(expense.date)}
+                      Paid by @{paidBy} · {formatApiDate(expense.date, preferences.timezone, preferences.language)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {expense.shares
@@ -69,13 +71,13 @@ export function GroupExpensesSection({
                           const member = group.members.find(
                             (item) => item.user.id === share.user_id,
                           )?.user;
-                          return `@${member?.username ?? share.email}: Rs. ${Number(share.amount).toLocaleString()}`;
+                          return `@${member?.username ?? share.email}: ${formatCurrency(Number(share.amount))}`;
                         })
                         .join(" · ")}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold">
-                    Rs. {Number(expense.amount).toLocaleString()}
+                    {formatCurrency(Number(expense.amount))}
                   </p>
                   {canManageExpense && (
                     <div className="flex gap-1">

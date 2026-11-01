@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ExpenseRowModel } from "@/features/expenses/hooks/useExpenses";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface ExpenseRowProps {
   expense: ExpenseRowModel;
@@ -35,6 +36,7 @@ const paymentMethodLabels: Record<string, string> = {
 };
 
 export const ExpenseRow = memo(function ExpenseRow({ expense, onEdit, onDelete }: ExpenseRowProps) {
+  const { formatCurrency } = useAppPreferences();
   const category = displayCategory[expense.category] ?? expense.category;
   const isIncome = expense.type === "Personal" && expense.transactionType === "INCOME";
   
@@ -78,7 +80,7 @@ export const ExpenseRow = memo(function ExpenseRow({ expense, onEdit, onDelete }
         )}
       </div>
       <p className={`shrink-0 text-sm font-semibold tabular-nums ${isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-        {isIncome ? "+" : "−"} Rs. {expense.amount.toLocaleString()}
+        {isIncome ? "+" : "−"} {formatCurrency(expense.amount)}
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

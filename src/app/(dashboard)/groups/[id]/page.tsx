@@ -25,8 +25,10 @@ import { GroupMembersSection } from "@/features/groups/components/GroupMembersSe
 import { GroupBalancesSection } from "@/features/groups/components/GroupBalancesSection";
 import { GroupExpensesSection } from "@/features/groups/components/GroupExpensesSection";
 import { GroupActivitySection } from "@/features/groups/components/GroupActivitySection";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 export default function GroupDetailsPage() {
+  const { formatCurrency } = useAppPreferences();
   const params = useParams<{ id: string }>();
   const groupId = Number(params.id);
   const { data: session } = useSession();
@@ -119,7 +121,7 @@ export default function GroupDetailsPage() {
         />
         <StatCard
           label="Total spent"
-          value={`Rs. ${expenses.reduce((sum, expense) => sum + Number(expense.amount), 0).toLocaleString()}`}
+          value={formatCurrency(expenses.reduce((sum, expense) => sum + Number(expense.amount), 0))}
           icon={Wallet}
         />
       </div>

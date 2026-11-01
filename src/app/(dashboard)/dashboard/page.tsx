@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet, getApiErrorMessage, type DashboardAnalytics } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 const categoryLabels: Record<string, string> = {
   FOOD: "Food & Dining",
@@ -19,9 +20,8 @@ const categoryLabels: Record<string, string> = {
   OTHER: "Other",
 };
 const chartColors = ["var(--primary)", "#3b82f6", "#8b5cf6", "#06b6d4", "#ec4899", "#f59e0b", "#64748b"];
-const money = (value: number) => `Rs. ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-
 export default function DashboardPage() {
+  const { formatCurrency } = useAppPreferences();
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
@@ -147,10 +147,10 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Group settlements" value={summary ? money(Math.abs(summary.net_group_balance)) : "—"} detail={summary ? groupStatus : "Balances across groups"} icon={Wallet} loading={analyticsLoading} />
-        <MetricCard title="Monthly inflow" value={summary ? money(summary.total_personal_income_this_month) : "—"} detail="Personal income this month" icon={ArrowDownLeft} tone="positive" loading={analyticsLoading} />
-        <MetricCard title="Monthly outflow" value={summary ? money(summary.total_personal_spent_this_month) : "—"} detail="Personal expenses this month" icon={ArrowUpRight} tone="negative" loading={analyticsLoading} />
-        <MetricCard title="Net savings" value={summary ? money(summary.net_personal_savings) : "—"} detail={`${savingsRate.toFixed(1)}% of recorded income`} icon={PiggyBank} tone="savings" loading={analyticsLoading} />
+        <MetricCard title="Group settlements" value={summary ? formatCurrency(Math.abs(summary.net_group_balance)) : "—"} detail={summary ? groupStatus : "Balances across groups"} icon={Wallet} loading={analyticsLoading} />
+        <MetricCard title="Monthly inflow" value={summary ? formatCurrency(summary.total_personal_income_this_month) : "—"} detail="Personal income this month" icon={ArrowDownLeft} tone="positive" loading={analyticsLoading} />
+        <MetricCard title="Monthly outflow" value={summary ? formatCurrency(summary.total_personal_spent_this_month) : "—"} detail="Personal expenses this month" icon={ArrowUpRight} tone="negative" loading={analyticsLoading} />
+        <MetricCard title="Net savings" value={summary ? formatCurrency(summary.net_personal_savings) : "—"} detail={`${savingsRate.toFixed(1)}% of recorded income`} icon={PiggyBank} tone="savings" loading={analyticsLoading} />
       </div>
 
       <div className="grid items-stretch gap-5 lg:grid-cols-5">
@@ -189,6 +189,7 @@ type Category = { name: string; value: number; color: string; pct: number };
 type MonthlyRecord = DashboardAnalytics["monthly_history"][number];
 
 const CategoryBreakdown = memo(function CategoryBreakdown({ categories, loading }: { categories: Category[]; loading: boolean }) {
+  const { formatCurrency } = useAppPreferences();
   return (
     <Card className="rounded-2xl border-border/70 shadow-sm transition-shadow hover:shadow-md lg:col-span-2">
       <CardHeader className="pb-2">
@@ -198,8 +199,8 @@ const CategoryBreakdown = memo(function CategoryBreakdown({ categories, loading 
       </CardHeader>
       <CardContent>
         {loading ? <Skeleton className="h-64 w-full" /> : categories.length ? <>
-          <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categories} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={3}>{categories.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => money(Number(value))} /></PieChart></ResponsiveContainer></div>
-          <div className="mt-4 space-y-3 border-t pt-4">{categories.map((category) => <div key={category.name} className="flex items-center gap-3 text-sm"><span className="size-2.5 rounded-full ring-4 ring-background" style={{ backgroundColor: category.color }} /><span className="min-w-0 flex-1 truncate text-muted-foreground">{category.name}</span><span className="text-xs text-muted-foreground">{category.pct.toFixed(0)}%</span><span className="font-medium tabular-nums">{money(category.value)}</span></div>)}</div>
+          <div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={categories} dataKey="value" nameKey="name" innerRadius={54} outerRadius={82} paddingAngle={3}>{categories.map((entry) => <Cell key={entry.name} fill={entry.color} />)}</Pie><Tooltip formatter={(value) => formatCurrency(Number(value))} /></PieChart></ResponsiveContainer></div>
+          <div className="mt-4 space-y-3 border-t pt-4">{categories.map((category) => <div key={category.name} className="flex items-center gap-3 text-sm"><span className="size-2.5 rounded-full ring-4 ring-background" style={{ backgroundColor: category.color }} /><span className="min-w-0 flex-1 truncate text-muted-foreground">{category.name}</span><span className="text-xs text-muted-foreground">{category.pct.toFixed(0)}%</span><span className="font-medium tabular-nums">{formatCurrency(category.value)}</span></div>)}</div>
         </> : <EmptyChart message="No personal expenses recorded this month." />}
       </CardContent>
     </Card>
@@ -207,6 +208,7 @@ const CategoryBreakdown = memo(function CategoryBreakdown({ categories, loading 
 });
 
 const CashFlowChart = memo(function CashFlowChart({ history, loading }: { history: MonthlyRecord[]; loading: boolean }) {
+  const { formatCurrency } = useAppPreferences();
   return (
     <Card className="rounded-2xl border-border/70 shadow-sm transition-shadow hover:shadow-md lg:col-span-3">
       <CardHeader className="pb-2">
@@ -215,7 +217,7 @@ const CashFlowChart = memo(function CashFlowChart({ history, loading }: { histor
         <CardDescription>Monthly income and expenses, using recorded personal transactions.</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? <Skeleton className="h-[340px] w-full" /> : history.length ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...history].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => money(Number(value))} /><Bar dataKey="income" name="Inflow" fill="#10b981" radius={[5, 5, 0, 0]} /><Bar dataKey="expense" name="Outflow" fill="#f43f5e" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="Add transactions to see monthly cash flow." />}
+        {loading ? <Skeleton className="h-[340px] w-full" /> : history.length ? <div className="h-[340px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...history].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} /><YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} /><Tooltip formatter={(value) => formatCurrency(Number(value))} /><Bar dataKey="income" name="Inflow" fill="#10b981" radius={[5, 5, 0, 0]} /><Bar dataKey="expense" name="Outflow" fill="#f43f5e" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div> : <EmptyChart message="Add transactions to see monthly cash flow." />}
       </CardContent>
     </Card>
   );

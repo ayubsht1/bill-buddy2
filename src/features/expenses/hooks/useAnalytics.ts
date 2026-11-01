@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getApiErrorMessage, type Group, type GroupExpense, type PersonalExpense } from "@/lib/api/billbuddy";
+import { getApiErrorMessage, type PersonalExpense } from "@/lib/api/billbuddy";
 import { expenseApi } from "../services/expenseApi";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 type Range = "6m" | "1y";
 type GroupSpend = { name: string; amount: number; expenseCount: number; memberCount: number };
 
 export function useAnalytics() {
+  const { formatDate, getMonthKey } = useAppPreferences();
   const [range, setRange] = useState<Range>("6m");
   const [transactions, setTransactions] = useState<PersonalExpense[]>([]);
   const [groupSpending, setGroupSpending] = useState<GroupSpend[]>([]);
@@ -44,13 +46,14 @@ export function useAnalytics() {
   }, [loadAnalytics]);
 
   const analyticsData = useMemo(() => {
-    const current = new Date();
+    const [currentYear, currentMonthNumber] = getMonthKey(new Date()).split("-").map(Number);
     const monthCount = range === "6m" ? 6 : 12;
     const monthKeys = Array.from({ length: monthCount }, (_, index) => {
-      const date = new Date(current.getFullYear(), current.getMonth() - monthCount + index + 1, 1);
+      const date = new Date(Date.UTC(currentYear, currentMonthNumber - 1 - monthCount + index + 1, 15, 12));
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
       return { 
-        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`, 
-        label: date.toLocaleDateString(undefined, { month: "short", year: monthCount > 6 ? "2-digit" : undefined }) 
+        key,
+        label: formatDate(`${key}-01`, { month: "short", year: monthCount > 6 ? "2-digit" : undefined }),
       };
     });
 
@@ -98,7 +101,7 @@ export function useAnalytics() {
       averageExpense: expenseRecords.length ? totalExpenses / expenseRecords.length : 0, 
       expenseCount: expenseRecords.length 
     };
-  }, [range, transactions]);
+  }, [range, transactions, formatDate, getMonthKey]);
 
   return {
     state: {

@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { apiDelete, getApiErrorMessage } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 export type Friend = {
   id: number;
@@ -41,6 +42,7 @@ interface FriendCardProps {
 }
 
 export function FriendCard({ friend, onRemoved }: FriendCardProps) {
+  const { formatCurrency } = useAppPreferences();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -101,7 +103,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
                 You are owed
               </div>
               <p className="mt-1 text-sm font-semibold">
-                Rs. {friend.balance.toLocaleString()}
+                {formatCurrency(friend.balance)}
               </p>
             </>
           )}
@@ -113,7 +115,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
                 You owe
               </div>
               <p className="mt-1 text-sm font-semibold">
-                Rs. {friend.balance.toLocaleString()}
+                {formatCurrency(friend.balance)}
               </p>
             </>
           )}

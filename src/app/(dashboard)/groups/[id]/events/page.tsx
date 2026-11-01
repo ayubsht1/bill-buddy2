@@ -32,6 +32,7 @@ import {
   type Group,
   type GroupEvent,
 } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 type BudgetDraft = { description: string; amount: string };
 type EventDraft = {
@@ -43,43 +44,98 @@ type EventDraft = {
   budgetItems: BudgetDraft[];
 };
 
-const dateKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const dateKey = (date: Date, timezone: string) => {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
+};
 
-const toLocalInput = (date: Date) => {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localDate.toISOString().slice(0, 16);
+const calendarKey = (date: Date) =>
+  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+
+const calendarDate = (key: string) => new Date(`${key}T12:00:00Z`);
+
+const toZonedInput = (value: string, timezone: string) => {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+};
+
+const fromZonedInput = (value: string, timezone: string) => {
+  const [datePart, timePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+  let timestamp = target;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = new Intl.DateTimeFormat("en", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(timestamp));
+    const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+    timestamp += target - Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+  }
+  const resolvedParts = new Intl.DateTimeFormat("en", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(timestamp));
+  const resolved = (type: string) => Number(resolvedParts.find((part) => part.type === type)?.value);
+  if (
+    resolved("year") !== year
+    || resolved("month") !== month
+    || resolved("day") !== day
+    || resolved("hour") !== hour
+    || resolved("minute") !== minute
+  ) return new Date(Number.NaN);
+  return new Date(timestamp);
 };
 
 const createDraft = (date: Date): EventDraft => {
-  const start = new Date(date);
-  start.setHours(18, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(end.getHours() + 1);
+  const day = calendarKey(date);
   return {
     title: "",
     description: "",
     location: "",
-    startsAt: toLocalInput(start),
-    endsAt: toLocalInput(end),
+    startsAt: `${day}T18:00`,
+    endsAt: `${day}T19:00`,
     budgetItems: [],
   };
 };
-
-const formatTime = (value: string) =>
-  new Date(value).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
 export default function GroupEventsPage() {
   const params = useParams<{ id: string }>();
   const groupId = Number(params.id);
   const { data: session } = useSession();
+  const { formatCurrency, formatTime, formatDate, preferences } = useAppPreferences();
   const [group, setGroup] = useState<Group | null>(null);
   const [events, setEvents] = useState<GroupEvent[]>([]);
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
+    const now = new Date();
+    return calendarDate(`${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-15`);
   });
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => calendarDate(dateKey(new Date(), "Asia/Kathmandu")));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,6 +146,12 @@ export default function GroupEventsPage() {
   const [deleteTarget, setDeleteTarget] = useState<GroupEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  useEffect(() => {
+    const todayKey = dateKey(new Date(), preferences.timezone);
+    setCurrentMonth(calendarDate(`${todayKey.slice(0, 7)}-15`));
+    setSelectedDate(calendarDate(todayKey));
+  }, [preferences.timezone]);
+
   const loadEvents = useCallback(async () => {
     if (!Number.isInteger(groupId) || groupId <= 0) {
       setError("Invalid group.");
@@ -98,8 +160,11 @@ export default function GroupEventsPage() {
     }
     setLoading(true);
     setError(null);
-    const from = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const to = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthKey = calendarKey(currentMonth).slice(0, 7);
+    const [year, month] = monthKey.split("-").map(Number);
+    const from = fromZonedInput(`${monthKey}-01T00:00`, preferences.timezone);
+    const nextMonthKey = calendarKey(new Date(Date.UTC(year, month, 1, 12))).slice(0, 7);
+    const to = new Date(fromZonedInput(`${nextMonthKey}-01T00:00`, preferences.timezone).getTime() - 1);
     const range = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
     try {
       const [groupDetails, monthEvents] = await Promise.all([
@@ -113,7 +178,7 @@ export default function GroupEventsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentMonth, groupId]);
+  }, [currentMonth, groupId, preferences.timezone]);
 
   useEffect(() => {
     void loadEvents();
@@ -122,30 +187,30 @@ export default function GroupEventsPage() {
   const eventsByDay = useMemo(() => {
     const grouped = new Map<string, GroupEvent[]>();
     for (const event of events) {
-      const key = dateKey(new Date(event.starts_at));
+      const key = dateKey(new Date(event.starts_at), preferences.timezone);
       grouped.set(key, [...(grouped.get(key) ?? []), event]);
     }
     return grouped;
-  }, [events]);
+  }, [events, preferences.timezone]);
 
   const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const offset = new Date(year, month, 1).getDay();
-    const dayCount = new Date(year, month + 1, 0).getDate();
+    const year = currentMonth.getUTCFullYear();
+    const month = currentMonth.getUTCMonth();
+    const offset = new Date(Date.UTC(year, month, 1)).getUTCDay();
+    const dayCount = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     return Array.from({ length: offset + dayCount }, (_, index) =>
-      index < offset ? null : new Date(year, month, index - offset + 1),
+      index < offset ? null : new Date(Date.UTC(year, month, index - offset + 1, 12)),
     );
   }, [currentMonth]);
 
-  const selectedEvents = eventsByDay.get(dateKey(selectedDate)) ?? [];
+  const selectedEvents = eventsByDay.get(calendarKey(selectedDate)) ?? [];
   const canManage = (event: GroupEvent) =>
     event.created_by === session?.user?.username
     || group?.user_role === "owner"
     || group?.user_role === "admin";
 
   const changeMonth = (amount: number) => {
-    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + amount, 1);
+    const next = new Date(Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + amount, 1, 12));
     setCurrentMonth(next);
     setSelectedDate(next);
   };
@@ -163,8 +228,8 @@ export default function GroupEventsPage() {
       title: event.title,
       description: event.description,
       location: event.location,
-      startsAt: toLocalInput(new Date(event.starts_at)),
-      endsAt: toLocalInput(new Date(event.ends_at)),
+      startsAt: toZonedInput(event.starts_at, preferences.timezone),
+      endsAt: toZonedInput(event.ends_at, preferences.timezone),
       budgetItems: event.budget_items.map((item) => ({
         description: item.description,
         amount: String(item.amount),
@@ -176,9 +241,13 @@ export default function GroupEventsPage() {
 
   const saveEvent = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
-    const startsAt = new Date(draft.startsAt);
-    const endsAt = new Date(draft.endsAt);
-    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+    const startsAt = fromZonedInput(draft.startsAt, preferences.timezone);
+    const endsAt = fromZonedInput(draft.endsAt, preferences.timezone);
+    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+      setFormError("The selected time does not exist in your preferred time zone.");
+      return;
+    }
+    if (endsAt <= startsAt) {
       setFormError("The end time must be after the start time.");
       return;
     }
@@ -261,13 +330,13 @@ export default function GroupEventsPage() {
           <CardHeader className="gap-4 border-b sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" aria-label="Previous month" onClick={() => changeMonth(-1)}><ChevronLeft className="size-4" /></Button>
-              <CardTitle className="min-w-36 text-center text-base">{currentMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</CardTitle>
+              <CardTitle className="min-w-36 text-center text-base">{formatDate(`${calendarKey(currentMonth).slice(0, 7)}-01`, { month: "long", year: "numeric" })}</CardTitle>
               <Button variant="outline" size="icon" aria-label="Next month" onClick={() => changeMonth(1)}><ChevronRight className="size-4" /></Button>
             </div>
             <Button variant="ghost" size="sm" className="self-start sm:self-auto" onClick={() => {
-              const today = new Date();
-              setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-              setSelectedDate(today);
+              const todayKey = dateKey(new Date(), preferences.timezone);
+              setCurrentMonth(calendarDate(`${todayKey.slice(0, 7)}-15`));
+              setSelectedDate(calendarDate(todayKey));
             }}>Today</Button>
           </CardHeader>
           <CardContent className="p-2 sm:p-4">
@@ -277,19 +346,19 @@ export default function GroupEventsPage() {
             <div className="grid grid-cols-7 gap-1">
               {calendarDays.map((date, index) => {
                 if (!date) return <div key={`blank-${index}`} aria-hidden="true" />;
-                const dayEvents = eventsByDay.get(dateKey(date)) ?? [];
-                const selected = dateKey(date) === dateKey(selectedDate);
-                const isToday = dateKey(date) === dateKey(new Date());
+                const dayEvents = eventsByDay.get(calendarKey(date)) ?? [];
+                const selected = calendarKey(date) === calendarKey(selectedDate);
+                const isToday = calendarKey(date) === dateKey(new Date(), preferences.timezone);
                 return (
                   <button
-                    key={dateKey(date)}
+                    key={calendarKey(date)}
                     type="button"
                     aria-pressed={selected}
-                    aria-label={`${date.toLocaleDateString()}${dayEvents.length ? `, ${dayEvents.length} events` : ""}`}
+                    aria-label={`${formatDate(calendarKey(date), { weekday: "long", month: "long", day: "numeric" })}${dayEvents.length ? `, ${dayEvents.length} events` : ""}`}
                     onClick={() => setSelectedDate(date)}
                     className={`min-h-14 min-w-0 rounded-lg border p-1.5 text-left transition-colors sm:min-h-24 sm:p-2 ${selected ? "border-primary bg-primary/5" : "border-transparent hover:border-border hover:bg-muted/50"}`}
                   >
-                    <span className={`flex size-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-primary text-primary-foreground" : "text-foreground"}`}>{date.getDate()}</span>
+                    <span className={`flex size-6 items-center justify-center rounded-full text-xs ${isToday ? "bg-primary text-primary-foreground" : "text-foreground"}`}>{date.getUTCDate()}</span>
                     {dayEvents.length > 0 && (
                       <>
                         <span className="mt-1 block text-center text-[10px] text-primary sm:hidden">{dayEvents.length} event{dayEvents.length === 1 ? "" : "s"}</span>
@@ -309,7 +378,7 @@ export default function GroupEventsPage() {
 
         <Card className="min-w-0">
           <CardHeader className="flex flex-row items-start justify-between gap-3 border-b">
-            <div className="min-w-0"><CardTitle className="text-base">{selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{selectedEvents.length} planned event{selectedEvents.length === 1 ? "" : "s"}</p></div>
+            <div className="min-w-0"><CardTitle className="text-base">{formatDate(calendarKey(selectedDate), { weekday: "long", month: "long", day: "numeric" })}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{selectedEvents.length} planned event{selectedEvents.length === 1 ? "" : "s"}</p></div>
             <Button variant="outline" size="icon" aria-label="Plan event on selected day" onClick={() => openCreate(selectedDate)}><Plus className="size-4" /></Button>
           </CardHeader>
           <CardContent className="space-y-3 p-4">
@@ -325,8 +394,8 @@ export default function GroupEventsPage() {
                   {event.description && <p className="break-words leading-relaxed">{event.description}</p>}
                 </div>
                 <div className="mt-4 border-t pt-3">
-                  <div className="flex items-center justify-between gap-2"><p className="text-xs font-medium">Estimated costs</p><p className="text-sm font-semibold">Rs. {Number(event.planned_budget).toLocaleString()}</p></div>
-                  {event.budget_items.length ? <ul className="mt-2 space-y-1">{event.budget_items.map((item) => <li key={item.id} className="flex justify-between gap-3 text-xs text-muted-foreground"><span className="min-w-0 break-words">{item.description}</span><span className="shrink-0">Rs. {Number(item.amount).toLocaleString()}</span></li>)}</ul> : <p className="mt-1 text-xs text-muted-foreground">No estimates added.</p>}
+                  <div className="flex items-center justify-between gap-2"><p className="text-xs font-medium">Estimated costs</p><p className="text-sm font-semibold">{formatCurrency(Number(event.planned_budget))}</p></div>
+                  {event.budget_items.length ? <ul className="mt-2 space-y-1">{event.budget_items.map((item) => <li key={item.id} className="flex justify-between gap-3 text-xs text-muted-foreground"><span className="min-w-0 break-words">{item.description}</span><span className="shrink-0">{formatCurrency(Number(item.amount))}</span></li>)}</ul> : <p className="mt-1 text-xs text-muted-foreground">No estimates added.</p>}
                   <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Users className="size-3" /> Estimates only; add real expenses when they occur.</p>
                 </div>
               </article>

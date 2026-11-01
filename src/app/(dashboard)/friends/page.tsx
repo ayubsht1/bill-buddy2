@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { useFriends } from "@/features/friends/hooks/useFriends";
 import { SummaryCard } from "@/features/friends/components/SummaryCard";
 import { FriendsList } from "@/features/friends/components/FriendsList";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 export default function FriendsPage() {
+  const { formatCurrency } = useAppPreferences();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [addFriendOpen, setAddFriendOpen] = useState(false);
@@ -49,8 +51,8 @@ export default function FriendsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard title="Total Friends" value={String(friends.length)} description="Your connections" icon={Users} />
-        <SummaryCard title="You Are Owed" value={`Rs. ${totalOwed.toLocaleString()}`} description="From your friends" icon={ArrowDownLeft} />
-        <SummaryCard title="You Owe" value={`Rs. ${totalOwe.toLocaleString()}`} description="To your friends" icon={ArrowUpRight} />
+        <SummaryCard title="You Are Owed" value={formatCurrency(totalOwed)} description="From your friends" icon={ArrowDownLeft} />
+        <SummaryCard title="You Owe" value={formatCurrency(totalOwe)} description="To your friends" icon={ArrowUpRight} />
         <SummaryCard title="Settled" value={String(settledCount)} description="No outstanding balance" icon={Users} />
       </div>
 

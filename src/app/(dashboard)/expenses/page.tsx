@@ -17,11 +17,10 @@ import {
 import { useExpenses, type ExpenseRowModel } from "@/features/expenses/hooks/useExpenses";
 import { SummaryCard } from "@/features/expenses/components/SummaryCard";
 import { ExpenseList } from "@/features/expenses/components/ExpenseList";
-
-const money = (value: number) => `Rs. ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 export default function ExpensesPage() {
+  const { formatCurrency, formatDate, getMonthKey } = useAppPreferences();
   const { state, actions } = useExpenses();
   const { expenses, groups, loading, error, deleting } = state;
 
@@ -57,25 +56,25 @@ export default function ExpensesPage() {
   const totalExpenses = personalTransactions
     .filter((transaction) => transaction.transactionType === "EXPENSE")
     .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const currentMonthKey = monthKey(new Date());
+  const currentMonthKey = getMonthKey(new Date());
   const currentMonthTransactions = personalTransactions.filter((transaction) => transaction.date.slice(0, 7) === currentMonthKey);
   const monthlySavings = currentMonthTransactions.reduce(
     (sum, transaction) => sum + (transaction.transactionType === "INCOME" ? transaction.amount : -transaction.amount),
     0,
   );
   const cashFlow = useMemo(() => {
-    const now = new Date();
+    const [year, currentMonth] = getMonthKey(new Date()).split("-").map(Number);
     return Array.from({ length: 6 }, (_, index) => {
-      const month = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
-      const key = monthKey(month);
+      const month = new Date(Date.UTC(year, currentMonth - 1 - 5 + index, 1, 12));
+      const key = getMonthKey(month);
       const rows = personalTransactions.filter((transaction) => transaction.date.slice(0, 7) === key);
       return {
-        month: month.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+        month: formatDate(`${key}-01`, { month: "short", year: "2-digit" }),
         income: rows.filter((transaction) => transaction.transactionType === "INCOME").reduce((sum, transaction) => sum + transaction.amount, 0),
         expense: rows.filter((transaction) => transaction.transactionType === "EXPENSE").reduce((sum, transaction) => sum + transaction.amount, 0),
       };
     });
-  }, [personalTransactions]);
+  }, [personalTransactions, formatDate, getMonthKey]);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
@@ -98,25 +97,25 @@ export default function ExpensesPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           title="Total balance"
-          value={money(totalIncome - totalExpenses)}
+          value={formatCurrency(totalIncome - totalExpenses)}
           description="Income minus expenses to date"
           icon={Wallet}
         />
         <SummaryCard
           title="Total income"
-          value={money(totalIncome)}
+          value={formatCurrency(totalIncome)}
           description="All recorded personal income"
           icon={ArrowDownLeft}
         />
         <SummaryCard
           title="Total expenses"
-          value={money(totalExpenses)}
+          value={formatCurrency(totalExpenses)}
           description="All recorded personal expenses"
           icon={ArrowUpRight}
         />
         <SummaryCard
           title="Net savings"
-          value={money(monthlySavings)}
+          value={formatCurrency(monthlySavings)}
           description="Income minus expenses this month"
           icon={PiggyBank}
         />
@@ -142,7 +141,7 @@ export default function ExpensesPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
                   <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value) => money(Number(value))} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="expense" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} />
                 </BarChart>

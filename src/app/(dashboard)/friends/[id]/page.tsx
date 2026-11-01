@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface FriendDetails extends UserSummary {
   balance: number;
@@ -21,6 +22,7 @@ interface FriendDetails extends UserSummary {
 }
 
 export default function FriendDetailPage() {
+  const { formatCurrency, preferences } = useAppPreferences();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [friend, setFriend] = useState<FriendDetails | null>(null);
@@ -81,7 +83,7 @@ export default function FriendDetailPage() {
                   {friend.status === "owed" ? "You are owed" : "You owe"}
                 </Badge>
               )}
-              <span className="text-sm font-semibold">Rs. {Math.abs(friend.balance).toLocaleString()}</span>
+              <span className="text-sm font-semibold">{formatCurrency(Math.abs(friend.balance))}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -102,8 +104,8 @@ export default function FriendDetailPage() {
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <BalanceCard title="You are owed" value={`Rs. ${owed.toLocaleString()}`} description={`${name} owes you`} icon={ArrowDownLeft} />
-        <BalanceCard title="You owe" value={`Rs. ${owe.toLocaleString()}`} description={`You owe ${name}`} icon={ArrowUpRight} />
+        <BalanceCard title="You are owed" value={formatCurrency(owed)} description={`${name} owes you`} icon={ArrowDownLeft} />
+        <BalanceCard title="You owe" value={formatCurrency(owe)} description={`You owe ${name}`} icon={ArrowUpRight} />
         <BalanceCard title="Shared expenses" value={String(friend.shared_expenses.length)} description="Across shared groups" icon={Receipt} />
       </div>
 
@@ -123,9 +125,9 @@ export default function FriendDetailPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{expense.description}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{expense.group} · Paid by {expense.paid_by} · {formatApiDate(expense.date)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{expense.group} · Paid by {expense.paid_by} · {formatApiDate(expense.date, preferences.timezone, preferences.language)}</p>
                     </div>
-                    <p className="text-sm font-semibold">Rs. {expense.amount.toLocaleString()}</p>
+                    <p className="text-sm font-semibold">{formatCurrency(expense.amount)}</p>
                   </div>
                 ))}
               </div>

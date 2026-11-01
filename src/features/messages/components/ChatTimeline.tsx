@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatApiDate, type GroupExpense, type GroupMessage } from "@/lib/api/billbuddy";
 import type { Conversation } from "../types/types";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface ChatTimelineProps {
   group: Conversation;
@@ -32,6 +33,7 @@ export const ChatTimeline = memo(function ChatTimeline({
   onDeleteExpense,
   onReplyMessage,
 }: ChatTimelineProps) {
+  const { formatCurrency, preferences } = useAppPreferences();
   useEffect(() => {
     messageEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [group.id, latestMessageKey, messageEnd]);
@@ -84,11 +86,11 @@ export const ChatTimeline = memo(function ChatTimeline({
                               {expense.description}
                             </p>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                              Paid by @{paidBy} · {formatApiDate(expense.date)}
+                              Paid by @{paidBy} · {formatApiDate(expense.date, preferences.timezone, preferences.language)}
                             </p>
                           </div>
                           <p className="shrink-0 text-sm font-semibold">
-                            Rs. {Number(expense.amount).toLocaleString()}
+                            {formatCurrency(Number(expense.amount))}
                           </p>
                         </div>
                         <div className="mt-3 space-y-1 border-t pt-2">
@@ -102,8 +104,8 @@ export const ChatTimeline = memo(function ChatTimeline({
                                 key={share.user_id}
                                 className="text-xs text-muted-foreground"
                               >
-                                @{member?.username ?? share.email} · Rs.{" "}
-                                {Number(share.amount).toLocaleString()}
+                                @{member?.username ?? share.email} ·{" "}
+                                {formatCurrency(Number(share.amount))}
                               </p>
                             );
                           })}
@@ -140,7 +142,7 @@ export const ChatTimeline = memo(function ChatTimeline({
             const senderName = itemMessage.sender_username || "Unknown";
             const senderProfilePicture = itemMessage.sender_profile_picture;
             const isSystem = itemMessage.is_system;
-            const isDeleted = Boolean((itemMessage as any).is_deleted);
+            const isDeleted = itemMessage.is_deleted;
 
             return (
               <div
@@ -253,7 +255,7 @@ export const ChatTimeline = memo(function ChatTimeline({
                     ))}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 px-1 text-[10px] text-muted-foreground">
                     {itemMessage.timestamp
-                      ? formatApiDate(itemMessage.timestamp)
+                      ? formatApiDate(itemMessage.timestamp, preferences.timezone, preferences.language)
                       : "Now"}
                     {isYou && <Check className="size-3" />}
                     {!isSystem && !isDeleted && (

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
 import type { ExpenseFormData } from "@/components/expenses/add-edit-expense-dialog";
+import { useAppPreferences } from "@/providers/preferences-provider";
 import { expenseApi } from "../services/expenseApi";
 
 export interface ExpenseRowModel extends Omit<ExpenseFormData, "id"> {
@@ -12,6 +13,7 @@ export interface ExpenseRowModel extends Omit<ExpenseFormData, "id"> {
 }
 
 export function useExpenses() {
+  const { formatCurrency } = useAppPreferences();
   const [expenses, setExpenses] = useState<ExpenseRowModel[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export function useExpenses() {
           const shareSummary = item.shares
             .map((share) => {
               const member = group.members.find((m) => m.user.id === share.user_id);
-              return `${member?.user.username ?? share.email} owes Rs. ${Number(share.amount).toLocaleString()}`;
+              return `${member?.user.username ?? share.email} owes ${formatCurrency(Number(share.amount))}`;
             })
             .join(" · ");
 
@@ -79,7 +81,7 @@ export function useExpenses() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [formatCurrency]);
 
   useEffect(() => {
     void loadExpenses();

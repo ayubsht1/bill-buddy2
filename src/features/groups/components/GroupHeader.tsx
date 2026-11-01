@@ -7,12 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Group } from "@/lib/api/billbuddy";
 import { formatApiDate } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 interface GroupHeaderProps {
   group: Group;
 }
 
 export function GroupHeader({ group }: GroupHeaderProps) {
+  const { preferences } = useAppPreferences();
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2">
@@ -38,7 +40,7 @@ export function GroupHeader({ group }: GroupHeaderProps) {
               {group.description || "No description."}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
-              Created {formatApiDate(group.created_at)} · Join code{" "}
+              Created {formatApiDate(group.created_at, preferences.timezone, preferences.language)} · Join code{" "}
               {group.join_code}
             </p>
           </div>

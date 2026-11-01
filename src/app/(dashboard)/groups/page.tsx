@@ -11,10 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet, formatApiDate, getApiErrorMessage, type Group as ApiGroup, type GroupBalances, type GroupExpense } from "@/lib/api/billbuddy";
+import { useAppPreferences } from "@/providers/preferences-provider";
 
 type GroupSummary = ApiGroup & { expenseCount: number; totalSpent: number; netBalance: number };
 
 export default function GroupsPage() {
+  const { formatCurrency, preferences } = useAppPreferences();
   const { data: session } = useSession();
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [search, setSearch] = useState("");
@@ -67,15 +69,15 @@ export default function GroupsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard title="Total Groups" value={String(groups.length)} description="Active groups" icon={Users} />
           <SummaryCard title="Group Members" value={String(totalMembers)} description="Across your groups" icon={Users} />
-          <SummaryCard title="Total Spending" value={`Rs. ${totalSpend.toLocaleString()}`} description="Across all groups" icon={Wallet} />
-          <SummaryCard title="Your Balance" value={`${netBalance >= 0 ? "+" : "-"}Rs. ${Math.abs(netBalance).toLocaleString()}`} description={netBalance >= 0 ? "You're owed overall" : "You owe overall"} icon={Wallet} />
+          <SummaryCard title="Total Spending" value={formatCurrency(totalSpend)} description="Across all groups" icon={Wallet} />
+          <SummaryCard title="Your Balance" value={`${netBalance >= 0 ? "+" : "-"}${formatCurrency(Math.abs(netBalance))}`} description={netBalance >= 0 ? "You're owed overall" : "You owe overall"} icon={Wallet} />
         </div>
         <Card>
           <CardHeader className="border-b"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><CardTitle className="text-base">All Groups</CardTitle><p className="mt-1 text-sm text-muted-foreground">Groups you&apos;re currently a member of.</p></div><div className="relative w-full sm:w-72"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search groups..." className="pl-9" /></div></div></CardHeader>
           <CardContent className="p-0">
             {loading ? <div className="space-y-3 p-5">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-24 w-full" />)}</div> :
               error ? <div className="p-8 text-center"><p className="text-sm text-destructive">{error}</p><Button variant="outline" className="mt-4" onClick={() => void loadGroups()}>Retry</Button></div> :
-              filteredGroups.length ? <div className="divide-y">{filteredGroups.map((group) => <GroupRow key={group.id} group={group} />)}</div> :
+              filteredGroups.length ? <div className="divide-y">{filteredGroups.map((group) => <GroupRow key={group.id} group={group} timezone={preferences.timezone} language={preferences.language} formatCurrency={formatCurrency} />)}</div> :
               <div className="flex flex-col items-center justify-center px-6 py-16 text-center"><div className="flex size-12 items-center justify-center rounded-full bg-muted"><Users className="size-5 text-muted-foreground" /></div><h3 className="mt-4 text-sm font-semibold">{search ? "No groups found" : "No groups yet"}</h3><p className="mt-1 max-w-sm text-sm text-muted-foreground">{search ? "Try another group name." : "Create a group to start sharing expenses."}</p>{!search && <Button className="mt-5 gap-2" onClick={() => setCreateGroupOpen(true)}><Plus className="size-4" /> Create Group</Button>}</div>}
           </CardContent>
         </Card>
@@ -89,7 +91,7 @@ function SummaryCard({ title, value, description, icon: Icon }: { title: string;
   return <Card><CardContent className="flex items-start justify-between p-5"><div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div></CardContent></Card>;
 }
 
-const GroupRow = memo(function GroupRow({ group }: { group: GroupSummary }) {
+const GroupRow = memo(function GroupRow({ group, timezone, language, formatCurrency }: { group: GroupSummary; timezone: string; language: string; formatCurrency: (amount: number | string) => string }) {
   const amountOwe = Math.max(0, -group.netBalance);
   const amountOwed = Math.max(0, group.netBalance);
   return (
@@ -98,11 +100,11 @@ const GroupRow = memo(function GroupRow({ group }: { group: GroupSummary }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{group.name}</h3><Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">{group.user_role ?? "member"}</Badge></div>
         <p className="mt-1 truncate text-sm text-muted-foreground">{group.description || "No group description."}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{group.members.length} members</span><span>·</span><span>{group.expenseCount} expenses</span><span>·</span><span className="flex items-center gap-1"><CalendarDays className="size-3.5" />{formatApiDate(group.created_at)}</span></div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{group.members.length} members</span><span>·</span><span>{group.expenseCount} expenses</span><span>·</span><span className="flex items-center gap-1"><CalendarDays className="size-3.5" />{formatApiDate(group.created_at, timezone, language)}</span></div>
       </div>
       <div className="grid grid-cols-2 gap-6 sm:flex sm:items-center sm:gap-8">
-        <div><p className="text-xs text-muted-foreground">You owe</p><p className={`mt-1 text-sm font-semibold ${amountOwe > 0 ? "text-destructive" : "text-muted-foreground"}`}>Rs. {amountOwe.toLocaleString()}</p></div>
-        <div><p className="text-xs text-muted-foreground">You&apos;re owed</p><p className={`mt-1 text-sm font-semibold ${amountOwed > 0 ? "text-primary" : "text-muted-foreground"}`}>Rs. {amountOwed.toLocaleString()}</p></div>
+        <div><p className="text-xs text-muted-foreground">You owe</p><p className={`mt-1 text-sm font-semibold ${amountOwe > 0 ? "text-destructive" : "text-muted-foreground"}`}>{formatCurrency(amountOwe)}</p></div>
+        <div><p className="text-xs text-muted-foreground">You&apos;re owed</p><p className={`mt-1 text-sm font-semibold ${amountOwed > 0 ? "text-primary" : "text-muted-foreground"}`}>{formatCurrency(amountOwed)}</p></div>
       </div>
       <Button variant="outline" size="sm" className="gap-2 sm:ml-2" asChild><Link href={`/groups/${group.id}`}>Open<ArrowRight className="size-3.5" /></Link></Button>
     </div>

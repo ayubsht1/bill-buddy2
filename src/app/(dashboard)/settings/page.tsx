@@ -16,6 +16,7 @@ import {
   Smartphone,
   Sun,
   UserRound,
+  Wallet,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSignOut } from "@/hooks/use-signout";
@@ -30,6 +31,13 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiGet, apiPatch, apiPost, getApiErrorMessage, type UserProfile } from "@/lib/api/billbuddy";
+import {
+  getCurrencySymbol,
+  getTimezoneOffsetLabel,
+  supportedCurrencies,
+  supportedTimezones,
+  useAppPreferences,
+} from "@/providers/preferences-provider";
 
 type SettingsSection = "profile" | "preferences" | "notifications" | "security" | "account";
 const settingsNav: Array<{ id: SettingsSection; label: string; description: string; icon: typeof CircleUserRound }> = [
@@ -41,6 +49,7 @@ const settingsNav: Array<{ id: SettingsSection; label: string; description: stri
 ];
 
 export default function SettingsPage() {
+  const { t } = useAppPreferences();
   const [activeSection, setActiveSection] = useState<SettingsSection>("profile");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -63,7 +72,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("settings")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage your profile, preferences, and security.</p>
       </div>
       <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -76,10 +85,10 @@ export default function SettingsPage() {
                 <button key={item.id} type="button" onClick={() => setActiveSection(item.id)} className={`flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-2.5 text-left transition-colors sm:gap-3 sm:px-3 lg:w-full ${active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                   <Icon className="size-4 shrink-0" />
                   <div className="hidden min-w-0 lg:block">
-                    <p className={`text-sm font-medium ${active ? "text-primary" : "text-foreground"}`}>{item.label}</p>
-                    <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{item.description}</p>
+                    <p className={`text-sm font-medium ${active ? "text-primary" : "text-foreground"}`}>{item.id === "preferences" ? t("preferences") : item.label}</p>
+                    <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{item.id === "preferences" ? t("customizeExperience") : item.description}</p>
                   </div>
-                  <span className="truncate text-sm lg:hidden">{item.label}</span>
+                  <span className="truncate text-sm lg:hidden">{item.id === "preferences" ? t("preferences") : item.label}</span>
                 </button>
               );
             })}
@@ -198,6 +207,40 @@ function ProfileSettings({ profile, loading, error, onRetry, onUpdated }: { prof
 
 function PreferencesSettings() {
   const { theme, setTheme } = useTheme();
+  const { preferences, loading, error, reload, save, t } = useAppPreferences();
+  const [currency, setCurrency] = useState(preferences.currency);
+  const [language, setLanguage] = useState(preferences.language);
+  const [timezone, setTimezone] = useState(preferences.timezone);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
+  const [hasSaved, setHasSaved] = useState(false);
+
+  useEffect(() => {
+    setCurrency(preferences.currency);
+    setLanguage(preferences.language);
+    setTimezone(preferences.timezone);
+  }, [preferences]);
+
+  const isDirty = currency !== preferences.currency ||
+    language !== preferences.language ||
+    timezone !== preferences.timezone;
+
+  const saveRegionalPreferences = async () => {
+    setSavingPreferences(true);
+    setPreferencesError(null);
+    setHasSaved(false);
+    try {
+      await save({ currency, language, timezone });
+      setHasSaved(true);
+      toast.success(t("saved"));
+    } catch (requestError) {
+      const message = getApiErrorMessage(requestError);
+      setPreferencesError(message);
+      toast.error(message);
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
 
   const saveTheme = () => {
     toast.success("Preference saved in this browser.");
@@ -205,11 +248,11 @@ function PreferencesSettings() {
 
   return (
     <div className="space-y-6">
-      <SettingsHeader title="Preferences" description="Customize your experience. Preferences are saved in this browser." />
+      <SettingsHeader title={t("preferences")} description={t("customizeExperience")} />
       <Card>
-        <CardHeader><CardTitle className="text-base">Appearance</CardTitle><CardDescription>Choose the color theme used by BillBuddy.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("appearance")}</CardTitle><CardDescription>{t("colorTheme")}</CardDescription></CardHeader>
         <CardContent className="space-y-5">
-          <SettingRow icon={Palette} title="Theme" description="Choose your preferred appearance.">
+          <SettingRow icon={Palette} title={t("theme")} description="Choose your preferred appearance.">
             <Select value={theme ?? "system"} onValueChange={(value) => { setTheme(value); saveTheme(); }}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="light"><span className="flex items-center gap-2"><Sun className="size-3.5" />Light</span></SelectItem><SelectItem value="dark"><span className="flex items-center gap-2"><Moon className="size-3.5" />Dark</span></SelectItem><SelectItem value="system">System</SelectItem></SelectContent>
@@ -218,11 +261,58 @@ function PreferencesSettings() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-base">Regional settings</CardTitle><CardDescription>Current regional defaults used by the application.</CardDescription></CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="rounded-lg border bg-muted/30 p-4"><p className="text-sm font-medium">Currency</p><p className="mt-1 text-xs text-muted-foreground">NPR (Rs.) — fixed by the current API and app.</p></div>
-          <div className="rounded-lg border bg-muted/30 p-4"><p className="text-sm font-medium">Language</p><p className="mt-1 text-xs text-muted-foreground">English — additional languages are not currently available.</p></div>
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4 sm:col-span-2"><Globe className="size-4 shrink-0 text-muted-foreground" /><div><p className="text-sm font-medium">Time zone</p><p className="mt-0.5 text-xs text-muted-foreground">{Intl.DateTimeFormat().resolvedOptions().timeZone}</p></div></div>
+        <CardHeader><CardTitle className="text-base">{t("regionalSettings")}</CardTitle><CardDescription>{t("regionalDescription")}</CardDescription></CardHeader>
+        <CardContent className="space-y-5">
+          {loading ? (
+            <SkeletonCard />
+          ) : error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <p className="text-sm text-destructive">{error}</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => void reload().catch(() => undefined)}>Retry</Button>
+            </div>
+          ) : <>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <SettingRow icon={Wallet} title={t("currency")} description="Display currency only; amounts are not converted.">
+                <Select value={currency} onValueChange={(value) => { setCurrency(value); setHasSaved(false); }}>
+                  <SelectTrigger aria-label={t("selectCurrency")} className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {supportedCurrencies.map((item) => <SelectItem key={item.code} value={item.code}>
+                      {getCurrencySymbol(item.code, language)} · {item.code} — {item.name}
+                    </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+              <SettingRow icon={Globe} title={t("language")} description="Interface language. Untranslated text remains in English.">
+                <Select value={language} onValueChange={(value: "en" | "ne") => { setLanguage(value); setHasSaved(false); }}>
+                  <SelectTrigger aria-label={t("selectLanguage")} className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="ne">नेपाली (Nepali)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+              <SettingRow icon={Globe} title={t("timezone")} description="Used to display timestamps and event times.">
+                <Select value={timezone} onValueChange={(value) => { setTimezone(value); setHasSaved(false); }}>
+                  <SelectTrigger aria-label={t("selectTimezone")} className="w-full sm:w-64"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {supportedTimezones.map((item) => <SelectItem key={item} value={item}>
+                      {item} ({getTimezoneOffsetLabel(item)})
+                    </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </SettingRow>
+            </div>
+            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div aria-live="polite">
+                {preferencesError && <p role="alert" className="text-sm text-destructive">{preferencesError}</p>}
+                {hasSaved && !preferencesError && <p className="text-sm text-emerald-600 dark:text-emerald-400">{t("saved")}</p>}
+                {isDirty && <p className="text-xs text-muted-foreground">You have unsaved preference changes.</p>}
+              </div>
+              <Button onClick={() => void saveRegionalPreferences()} disabled={!isDirty || savingPreferences}>
+                {savingPreferences ? t("saving") : t("saveChanges")}
+              </Button>
+            </div>
+          </>}
         </CardContent>
       </Card>
     </div>

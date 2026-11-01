@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
+import { getCurrencySymbol, useAppPreferences } from "@/providers/preferences-provider";
 
 export type ExpenseType = "Personal" | "Group";
 export type PersonalTransactionType = "INCOME" | "EXPENSE";
@@ -65,6 +66,8 @@ const paymentMethods = [
 ];
 
 export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [], defaultGroupId, defaultTransactionType = "EXPENSE", onSubmit }: AddEditExpenseDialogProps) {
+  const { preferences } = useAppPreferences();
+  const currencySymbol = getCurrencySymbol(preferences.currency, preferences.language);
   const isEditing = Boolean(expense);
   const [expenseType, setExpenseType] = useState<ExpenseType>("Personal");
   const [transactionType, setTransactionType] = useState<PersonalTransactionType>("EXPENSE");
@@ -195,7 +198,7 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
           </div>}
           <div className="grid gap-4 sm:grid-cols-[1fr_150px]">
             <div className="space-y-2"><Label htmlFor="expense-title">Description</Label><Input id="expense-title" maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} placeholder={transactionType === "INCOME" ? "e.g. Monthly salary" : "e.g. Dinner"} autoFocus /></div>
-            <div className="space-y-2"><Label htmlFor="expense-amount">Amount</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rs.</span><Input id="expense-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="pl-10" /></div></div>
+            <div className="space-y-2"><Label htmlFor="expense-amount">Amount ({preferences.currency})</Label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{currencySymbol}</span><Input id="expense-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="pl-10" /></div></div>
           </div>
           {expenseType === "Personal" ? <>
             <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>Category</Label><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal">{categories.find((item) => item.value === category)?.label}<ChevronDown className="size-4 text-muted-foreground" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">{categories.map((item) => <DropdownMenuItem key={item.value} onClick={() => setCategory(item.value)}>{item.label}{category === item.value && <Check className="ml-auto size-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></div>
@@ -207,7 +210,7 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
               {activeMembers.map((member) => {
                 const userId = member.user.id;
                 const included = participants.includes(userId);
-                return <div key={member.id} className="flex items-center gap-3"><input type="checkbox" checked={included} onChange={(event) => setParticipants((current) => event.target.checked ? [...current, userId] : current.filter((id) => id !== userId))} aria-label={`Include ${member.user.username}`} /><span className="min-w-0 flex-1 truncate text-sm">@{member.user.username}{member.role === "owner" ? " (owner)" : ""}</span>{included && splitType !== "EQUAL" && <Input aria-label={`${splitType === "EXACT" ? "Share amount" : "Share percentage"} for ${member.user.username}`} className="h-8 w-28" type="number" min="0" step="0.01" value={splitValues[userId] ?? ""} onChange={(event) => setSplitValues((values) => ({ ...values, [userId]: event.target.value }))} placeholder={splitType === "EXACT" ? "Rs." : "%"} />}</div>;
+                return <div key={member.id} className="flex items-center gap-3"><input type="checkbox" checked={included} onChange={(event) => setParticipants((current) => event.target.checked ? [...current, userId] : current.filter((id) => id !== userId))} aria-label={`Include ${member.user.username}`} /><span className="min-w-0 flex-1 truncate text-sm">@{member.user.username}{member.role === "owner" ? " (owner)" : ""}</span>{included && splitType !== "EQUAL" && <Input aria-label={`${splitType === "EXACT" ? "Share amount" : "Share percentage"} for ${member.user.username}`} className="h-8 w-28" type="number" min="0" step="0.01" value={splitValues[userId] ?? ""} onChange={(event) => setSplitValues((values) => ({ ...values, [userId]: event.target.value }))} placeholder={splitType === "EXACT" ? currencySymbol : "%"} />}</div>;
               })}
               <p className="text-xs text-muted-foreground">{splitType === "EQUAL" ? "Equal amounts are rounded to cents by the server." : splitType === "EXACT" ? "Custom shares must equal the total amount." : "Custom percentages must total 100%."}</p>
             </div>}

@@ -2,6 +2,7 @@
 
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { useEffect, useRef } from "react";
+import { PreferencesProvider } from "@/providers/preferences-provider";
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
   const { data: session, status, update } = useSession();
@@ -40,7 +41,9 @@ useEffect(() => {
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <SessionGuard>{children}</SessionGuard>
+      <PreferencesProvider>
+        <SessionGuard>{children}</SessionGuard>
+      </PreferencesProvider>
     </SessionProvider>
   );
 }

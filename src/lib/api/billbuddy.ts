@@ -155,6 +155,15 @@ export interface UserProfile {
   profilePicture?: string | null;
   is_active: boolean;
   has_password: boolean;
+  currency: string;
+  language: "en" | "ne";
+  timezone: string;
+}
+
+export interface UserPreferences {
+  currency: string;
+  language: "en" | "ne";
+  timezone: string;
 }
 
 export function resolveProfilePictureUrl(picture: string | null | undefined): string | undefined {
@@ -262,9 +271,18 @@ export function initials(name: string): string {
     .join("");
 }
 
-export function formatApiDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+export function formatApiDate(
+  value: string,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  language = "en",
+): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = dateOnly ? new Date(`${value}T12:00:00Z`) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(language, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: dateOnly ? "UTC" : timezone,
+  }).format(date);
 }
