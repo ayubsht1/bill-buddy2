@@ -12,6 +12,7 @@ export interface ApiEnvelope<T> {
 
 export interface UserSummary {
   id: number;
+  public_id: string;
   username: string;
   email: string;
   first_name: string;
@@ -20,7 +21,7 @@ export interface UserSummary {
 }
 
 export interface PersonalExpense {
-  id: number;
+  id: string;
   transaction_type: "INCOME" | "EXPENSE";
   description: string;
   amount: number | string;
@@ -38,7 +39,7 @@ export interface GroupMember {
 }
 
 export interface Group {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   creator: UserSummary;
@@ -47,6 +48,7 @@ export interface Group {
   join_code: string;
   created_at: string;
   user_role: "owner" | "admin" | "member" | null;
+  group_photo: string | null;
 }
 
 export interface GroupExpenseShare {
@@ -56,8 +58,8 @@ export interface GroupExpenseShare {
 }
 
 export interface GroupExpense {
-  id: number;
-  group: number;
+  id: string;
+  group: string;
   description: string;
   amount: number | string;
   paid_by: number;
@@ -111,7 +113,7 @@ export interface GroupEventBudgetItem {
 }
 
 export interface GroupEvent {
-  id: number;
+  id: string;
   title: string;
   description: string;
   location: string;
@@ -125,7 +127,7 @@ export interface GroupEvent {
 }
 
 export interface Settlement {
-  id: number;
+  id: string;
   group: number;
   paid_by: number;
   paid_to: number;
@@ -139,7 +141,7 @@ export interface Friend extends UserSummary {
 }
 
 export interface FriendRequest {
-  id: number;
+  id: string;
   from_user: UserSummary;
   to_user: UserSummary;
   status: "pending" | "accepted";
@@ -148,6 +150,7 @@ export interface FriendRequest {
 
 export interface UserProfile {
   id: number;
+  public_id: string;
   email: string;
   username: string;
   firstName: string;

@@ -13,21 +13,21 @@ export const messageApi = {
     return apiGet<Group[]>("/groups/");
   },
 
-  async getMessages(groupId: number): Promise<GroupMessage[]> {
+  async getMessages(groupId: string): Promise<GroupMessage[]> {
     return apiGet<GroupMessage[]>(`/groups/${groupId}/chat/`);
   },
 
-  async getGroupExpenses(groupId: number): Promise<GroupExpense[]> {
+  async getGroupExpenses(groupId: string): Promise<GroupExpense[]> {
     return apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`);
   },
 
-  async sendAttachment(groupId: number, formData: FormData): Promise<GroupMessage> {
+  async sendAttachment(groupId: string, formData: FormData): Promise<GroupMessage> {
     return apiPost<GroupMessage>(`/groups/${groupId}/chat/`, formData);
   },
 
   async saveExpense(
-    expenseId: number | null,
-    groupId: number,
+    expenseId: string | null,
+    groupId: string,
     data: {
       description: string;
       amount: number;
@@ -41,7 +41,7 @@ export const messageApi = {
     return apiPost<GroupExpense>(`/expenses/group/${groupId}/`, data);
   },
 
-  async deleteExpense(expenseId: number): Promise<void> {
+  async deleteExpense(expenseId: string): Promise<void> {
     return apiDelete(`/expenses/${expenseId}/`);
   },
 };

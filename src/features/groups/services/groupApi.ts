@@ -12,25 +12,25 @@ export const groupApi = {
     return apiGet<Group[]>("/groups/");
   },
 
-  async getGroupDetails(groupId: number): Promise<Group> {
+  async getGroupDetails(groupId: string): Promise<Group> {
     return apiGet<Group>(`/groups/${groupId}/`);
   },
 
-  async addMember(groupId: number, identifier: string): Promise<Group> {
+  async addMember(groupId: string, identifier: string): Promise<Group> {
     return apiPost<Group>(`/groups/${groupId}/add-member/`, { identifier });
   },
 
-  async changeRole(groupId: number, userId: number, role: string): Promise<void> {
+  async changeRole(groupId: string, userId: string, role: string): Promise<void> {
     return apiPatch(`/groups/${groupId}/members/${userId}/role/`, { role });
   },
 
-  async removeMember(groupId: number, userId: number): Promise<void> {
+  async removeMember(groupId: string, userId: string): Promise<void> {
     return apiDelete(`/groups/${groupId}/members/${userId}/`);
   },
 
   async saveExpense(
-    expenseId: number | null,
-    groupId: number,
+    expenseId: string | null,
+    groupId: string,
     data: {
       description: string;
       amount: number;
@@ -44,19 +44,27 @@ export const groupApi = {
     return apiPost<GroupExpense>(`/expenses/group/${groupId}/`, data);
   },
 
-  async deleteExpense(expenseId: number): Promise<void> {
+  async deleteExpense(expenseId: string): Promise<void> {
     return apiDelete(`/expenses/${expenseId}/`);
   },
 
-  async getGroupBalances(groupId: number): Promise<any> {
+  async getGroupBalances(groupId: string): Promise<any> {
     return apiGet(`/groups/${groupId}/balances/`);
   },
 
-  async getGroupExpenses(groupId: number): Promise<GroupExpense[]> {
+  async getGroupExpenses(groupId: string): Promise<GroupExpense[]> {
     return apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`);
   },
 
-  async getGroupActivity(groupId: number): Promise<any[]> {
+  async getGroupActivity(groupId: string): Promise<any[]> {
     return apiGet<any[]>(`/groups/${groupId}/chat/`);
+  },
+
+  async updateGroup(groupId: string, data: FormData | { name: string; description: string }): Promise<Group> {
+    return apiPatch<Group>(`/groups/${groupId}/`, data);
+  },
+
+  async deleteGroup(groupId: string): Promise<void> {
+    return apiDelete(`/groups/${groupId}/`);
   },
 };

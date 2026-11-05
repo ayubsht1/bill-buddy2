@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarDays, MessageCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Group } from "@/lib/api/billbuddy";
 import { formatApiDate } from "@/lib/api/billbuddy";
 import { useAppPreferences } from "@/providers/preferences-provider";
@@ -24,9 +25,10 @@ export function GroupHeader({ group }: GroupHeaderProps) {
       </Button>
       <Card>
         <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Users className="size-6" />
-          </div>
+          <Avatar className="size-14 shrink-0 rounded-xl">
+            <AvatarImage src={group.group_photo ?? undefined} alt={`${group.name} group picture`} />
+            <AvatarFallback className="rounded-xl bg-primary/10 text-primary"><Users className="size-6" /></AvatarFallback>
+          </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">

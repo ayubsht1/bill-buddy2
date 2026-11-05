@@ -6,6 +6,7 @@ import type { Friend } from "@/lib/api/billbuddy";
 
 export interface FriendCardModel {
   id: number;
+  public_id: string;
   name: string;
   username: string;
   profilePicture: string | undefined;
@@ -27,6 +28,7 @@ export function useFriends() {
       const data = await friendApi.getFriends();
       setFriends(data.map((friend) => ({
         id: friend.id,
+        public_id: friend.public_id,
         name: userDisplayName(friend),
         username: friend.username,
         profilePicture: resolveProfilePictureUrl(friend.profile_picture),

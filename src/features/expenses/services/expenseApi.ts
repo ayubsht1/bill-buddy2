@@ -17,11 +17,11 @@ export const expenseApi = {
     return apiGet<Group[]>("/groups/");
   },
 
-  async getGroupExpenses(groupId: number): Promise<GroupExpense[]> {
+  async getGroupExpenses(groupId: string): Promise<GroupExpense[]> {
     return apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`);
   },
 
-  async savePersonalExpense(id: number | null, data: unknown): Promise<void> {
+  async savePersonalExpense(id: string | null, data: unknown): Promise<void> {
     if (id) {
       await apiPatch(`/expenses/personal/${id}/`, data);
       return;
@@ -29,7 +29,7 @@ export const expenseApi = {
     await apiPost("/expenses/personal/", data);
   },
 
-  async saveGroupExpense(id: number | null, groupId: number, data: unknown): Promise<void> {
+  async saveGroupExpense(id: string | null, groupId: string, data: unknown): Promise<void> {
     if (id) {
       await apiPatch(`/expenses/${id}/`, data);
       return;
@@ -37,7 +37,7 @@ export const expenseApi = {
     await apiPost(`/expenses/group/${groupId}/`, data);
   },
 
-  async deleteExpense(id: number, type: "Personal" | "Group"): Promise<void> {
+  async deleteExpense(id: string, type: "Personal" | "Group"): Promise<void> {
     const path = type === "Personal" 
       ? `/expenses/personal/${id}/` 
       : `/expenses/${id}/`;

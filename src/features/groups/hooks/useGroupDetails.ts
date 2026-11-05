@@ -8,7 +8,7 @@ import {
 } from "@/lib/api/billbuddy";
 import { groupApi } from "../services/groupApi";
 
-export function useGroupDetails(groupId: number) {
+export function useGroupDetails(groupId: string) {
   const router = useRouter();
   const [details, setDetails] = useState<Group | null>(null);
   const [balances, setBalances] = useState<any>(null);
@@ -70,7 +70,7 @@ export function useGroupDetails(groupId: number) {
     }
   };
 
-  const changeRole = async (groupId: number, userId: number, role: string) => {
+  const changeRole = async (groupId: string, userId: string, role: string) => {
     try {
       await groupApi.changeRole(groupId, userId, role);
       toast.success("Role updated.");
@@ -80,7 +80,7 @@ export function useGroupDetails(groupId: number) {
     }
   };
 
-  const removeMember = async (userId: number) => {
+  const removeMember = async (userId: string) => {
     try {
       await groupApi.removeMember(groupId, userId);
       toast.success("Member removed.");
@@ -114,7 +114,7 @@ export function useGroupDetails(groupId: number) {
     }
   };
 
-  const deleteExpense = async (expenseId: number) => {
+  const deleteExpense = async (expenseId: string) => {
     try {
       await groupApi.deleteExpense(expenseId);
       setExpenses((current) => current.filter(e => e.id !== expenseId));

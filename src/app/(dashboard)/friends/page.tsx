@@ -29,9 +29,9 @@ export default function FriendsPage() {
     .reduce((total, friend) => total + friend.balance, 0);
   const settledCount = friends.filter((friend) => friend.status === "settled").length;
 
-  const handleMessageFriend = (friend: { id: number; name: string }) => {
+  const handleMessageFriend = (friend: { public_id: string; name: string }) => {
     router.push(
-      `/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.name)}`,
+      `/messages?chat=dm-${friend.public_id}&name=${encodeURIComponent(friend.name)}`,
     );
   };
 

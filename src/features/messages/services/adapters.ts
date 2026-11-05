@@ -6,12 +6,12 @@ import { directApi } from "./directApi";
 export type ChatEvent = { type: "new" | "update"; message: GroupMessage };
 
 export interface ChatAdapter {
-  getMessages(rawId: number): Promise<GroupMessage[]>;
-  sendAttachment(rawId: number, form: FormData): Promise<GroupMessage>;
+  getMessages(rawId: string | number): Promise<GroupMessage[]>;
+  sendAttachment(rawId: string | number, form: FormData): Promise<GroupMessage>;
 }
 
 export interface GroupSocketAdapter extends ChatAdapter {
-  openSocket(rawId: number, token: string): WebSocket;
+  openSocket(rawId: string, token: string): WebSocket;
   parseEvent(raw: string): ChatEvent | null;
 }
 
@@ -29,8 +29,8 @@ export const groupAdapter: GroupSocketAdapter = {
 };
 
 export const directAdapter: ChatAdapter = {
-  getMessages: directApi.getMessages,
-  sendAttachment: directApi.sendAttachment,
+  getMessages: (rawId) => directApi.getMessages(String(rawId)),
+  sendAttachment: (rawId, form) => directApi.sendAttachment(String(rawId), form),
 };
 
 export const adapterFor = (kind: string): ChatAdapter =>

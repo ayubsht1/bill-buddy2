@@ -17,7 +17,7 @@ import { useAppPreferences } from "@/providers/preferences-provider";
 interface FriendDetails extends UserSummary {
   balance: number;
   status: "owed" | "owe" | "settled";
-  shared_groups: Array<{ id: number; name: string }>;
+  shared_groups: Array<{ id: string; name: string }>;
   shared_expenses: Array<{ id: number; description: string; amount: number; paid_by: string; group: string; date: string }>;
 }
 
@@ -59,7 +59,7 @@ export default function FriendDetailPage() {
   const owe = Math.max(-friend.balance, 0);
 
   const messageFriend = () => {
-    router.push(`/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.username || name)}`);
+    router.push(`/messages?chat=dm-${friend.public_id}&name=${encodeURIComponent(friend.username || name)}`);
   };
 
   return (

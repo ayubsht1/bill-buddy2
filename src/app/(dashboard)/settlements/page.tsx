@@ -16,7 +16,7 @@ import { getCurrencySymbol, useAppPreferences } from "@/providers/preferences-pr
 
 type SettlementItem = {
   key: string;
-  groupId: number;
+  groupId: string;
   groupName: string;
   person: string;
   personId: number;

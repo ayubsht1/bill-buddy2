@@ -126,7 +126,7 @@ const createDraft = (date: Date): EventDraft => {
 
 export default function GroupEventsPage() {
   const params = useParams<{ id: string }>();
-  const groupId = Number(params.id);
+  const groupId = params.id;
   const { data: session } = useSession();
   const { formatCurrency, formatTime, formatDate, preferences } = useAppPreferences();
   const [group, setGroup] = useState<Group | null>(null);
@@ -153,7 +153,7 @@ export default function GroupEventsPage() {
   }, [preferences.timezone]);
 
   const loadEvents = useCallback(async () => {
-    if (!Number.isInteger(groupId) || groupId <= 0) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(groupId)) {
       setError("Invalid group.");
       setLoading(false);
       return;

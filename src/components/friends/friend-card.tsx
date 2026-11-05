@@ -28,6 +28,7 @@ import { useAppPreferences } from "@/providers/preferences-provider";
 
 export type Friend = {
   id: number;
+  public_id: string;
   name: string;
   username: string;
   profilePicture?: string;
@@ -53,7 +54,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
   const removeFriend = async () => {
     setRemoving(true);
     try {
-      await apiDelete(`/friends/${friend.id}/remove/`);
+      await apiDelete(`/friends/${friend.public_id}/remove/`);
       toast.success(`${friend.name} was removed from your friends.`);
       setConfirmOpen(false);
       await onRemoved?.();
@@ -67,7 +68,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
   // opens the chat in /messages (creates a placeholder if there's no history yet)
   const messageFriend = () => {
     router.push(
-      `/messages?chat=dm-${friend.id}&name=${encodeURIComponent(friend.username || friend.name)}`,
+      `/messages?chat=dm-${friend.public_id}&name=${encodeURIComponent(friend.username || friend.name)}`,
     );
   };
 
@@ -134,7 +135,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
           </Button>
 
           <Button asChild variant="outline" size="sm">
-            <Link href={`/friends/${friend.id}`}>View</Link>
+            <Link href={`/friends/${friend.public_id}`}>View</Link>
           </Button>
 
           <DropdownMenu>
@@ -146,7 +147,7 @@ export function FriendCard({ friend, onRemoved }: FriendCardProps) {
 
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/friends/${friend.id}`}>View profile</Link>
+                <Link href={`/friends/${friend.public_id}`}>View profile</Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem

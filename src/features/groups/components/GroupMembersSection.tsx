@@ -25,9 +25,9 @@ interface GroupMembersSectionProps {
   busyMemberId: number | null;
   onAddMember: (identifier: string) => void;
   onAddMemberLoading: boolean;
-  onChangeRole: (userId: number, role: string) => void;
-  onRemoveMember: (userId: number) => void;
-  setRemoveTarget: (userId: number) => void;
+  onChangeRole: (userId: string, role: string) => void;
+  onRemoveMember: (userId: string) => void;
+  setRemoveTarget: (userId: string) => void;
 }
 
 export function GroupMembersSection({
@@ -105,7 +105,7 @@ export function GroupMembersSection({
                       <Select
                         disabled={busyMemberId === member.id}
                         value={membership.role}
-                        onValueChange={(role) => void onChangeRole(member.id, role)}
+                        onValueChange={(role) => void onChangeRole(member.public_id, role)}
                       >
                         <SelectTrigger className="h-8 w-28">
                           <SelectValue />
@@ -125,7 +125,7 @@ export function GroupMembersSection({
                       variant="ghost"
                       className="text-destructive"
                       disabled={busyMemberId === member.id}
-                      onClick={() => setRemoveTarget(member.id)}
+                      onClick={() => setRemoveTarget(member.public_id)}
                     >
                       {isSelf ? "Leave" : "Remove"}
                     </Button>

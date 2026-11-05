@@ -16,6 +16,8 @@ import {
   toChatMessage,
   senderIdOf,
   receiverIdOf,
+  senderPublicIdOf,
+  receiverPublicIdOf,
   nameOf,
   picOf,
   type PersonalMessage,
@@ -168,13 +170,13 @@ export function useChat() {
 
       // friend with no history yet, e.g. ?chat=dm-7&name=Ayush
       if (queryId?.startsWith("dm-") && !list.some((c) => c.id === queryId)) {
-        const friendId = Number(queryId.slice(3));
-        if (friendId && friendId !== currentUserId) {
+          const friendId = queryId.slice(3);
+          if (friendId) {
           stubs.current.set(queryId, {
             id: queryId,
             kind: "direct",
             rawId: friendId,
-            title: params.get("name") ?? `user ${friendId}`,
+              title: params.get("name") ?? "New conversation",
             avatarUrl: null,
             members: [],
           });
@@ -215,12 +217,13 @@ export function useChat() {
 
   // start (or open) a DM with a friend, even with no history
   const startDirectChat = useCallback(
-    (friend: { id: number; username?: string; name?: string }) => {
-      const id = `dm-${friend.id}`;
+    (friend: { id: number; public_id: string; username?: string; name?: string }) => {
+      const id = `dm-${friend.public_id}`;
       const conv: Conversation = {
         id,
         kind: "direct",
-        rawId: friend.id,
+        rawId: friend.public_id,
+        internalId: friend.id,
         title: friend.username || friend.name || `user ${friend.id}`,
         avatarUrl: null,
         members: [],
@@ -255,7 +258,12 @@ export function useChat() {
     stored[id] = new Date().toISOString();
     window.localStorage.setItem(LAST_READ_KEY, JSON.stringify(stored));
 
-    const socket = groupAdapter.openSocket(rawId, accessToken);
+    const group = groups.find((item) => item.id === rawId);
+    if (!group) {
+      setConversationError("Group is unavailable. Refresh the conversation list and try again.");
+      return;
+    }
+    const socket = groupAdapter.openSocket(group.id, accessToken);
     groupSocket.current = socket;
 
     socket.onopen = () => setConversationError(null);
@@ -293,7 +301,7 @@ export function useChat() {
       socket.close();
       if (groupSocket.current === socket) groupSocket.current = null;
     };
-  }, [refreshConversation, router, selectedId, accessToken]);
+  }, [refreshConversation, router, selectedId, accessToken, groups]);
 
 // ---------- inbox socket (all DMs, lives as long as the page) ----------
 
@@ -320,8 +328,13 @@ useEffect(() => {
 
       const iSent = senderId === currentUserId;
       const otherId = iSent ? receiverId : senderId;
+      const otherPublicId = iSent ? receiverPublicIdOf(raw) : senderPublicIdOf(raw);
+      if (!otherPublicId) {
+        console.error("Unexpected personal message payload without public user identifiers:", raw);
+        return;
+      }
       const otherSide = iSent ? "receiver" : "sender";
-      const convId = `dm-${otherId}`;
+      const convId = `dm-${otherPublicId}`;
       const msg = toChatMessage(raw);
 
       setMessages((cur) => {
@@ -348,7 +361,8 @@ useEffect(() => {
               {
                 id: convId,
                 kind: "direct" as const,
-                rawId: otherId,
+                rawId: otherPublicId,
+                internalId: otherId,
                 title: otherName ?? `user ${otherId}`,
                 avatarUrl: otherPic,
                 members: [],
@@ -369,7 +383,7 @@ useEffect(() => {
 
         if (!iSent) {
           if (selectedIdRef.current === convId) {
-            socket.send(JSON.stringify({ action: "mark_read", friend_id: otherId }));
+            socket.send(JSON.stringify({ action: "mark_read", friend_public_id: otherPublicId }));
           } else {
             setUnread((cur) => ({ ...cur, [convId]: (cur[convId] ?? 0) + 1 }));
           }
@@ -404,7 +418,7 @@ useEffect(() => {
       })),
     });
     setExpenseDialogOpen(true);
-  }, []);
+  }, [groups]);
 
   const saveExpense = async (form: any) => {
     if (!selectedId) throw new Error("Choose a chat first.");
@@ -483,7 +497,7 @@ useEffect(() => {
         socket.send(
           JSON.stringify({
             action: "send_message",
-            receiver_id: rawId,
+            receiver_public_id: rawId,
             message: text,
             ...(replyingTo?.id ? { reply_to_id: replyingTo.id } : {}),
           }),

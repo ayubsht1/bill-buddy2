@@ -6,7 +6,7 @@ import { useAppPreferences } from "@/providers/preferences-provider";
 import { expenseApi } from "../services/expenseApi";
 
 export interface ExpenseRowModel extends Omit<ExpenseFormData, "id"> {
-  id: number;
+  id: string;
   paidBy: string;
   group?: string;
   shareSummary?: string;

@@ -1,9 +1,10 @@
 import type { Group } from "@/lib/api/billbuddy";
 
 export type Conversation = {
-  id: string; // "group-3" or "dm-7", so the two kinds never collide
+  id: string;
   kind: "group" | "direct";
-  rawId: number; // group id, or the friend's user id for DMs
+  rawId: number | string;
+  internalId?: number;
   title: string;
   avatarUrl: string | null;
   members: Group["members"];
@@ -14,11 +15,14 @@ export const fromGroup = (g: Group): Conversation => ({
   kind: "group",
   rawId: g.id,
   title: g.name,
-  avatarUrl: null,
+  avatarUrl: g.group_photo,
   members: g.members,
 });
 
 export const parseConversationId = (id: string) => {
-  const [kind, raw] = id.split("-");
-  return { kind: kind as "group" | "dm", rawId: Number(raw) };
+  const separator = id.indexOf("-");
+  const kind = id.slice(0, separator);
+  const raw = id.slice(separator + 1);
+  if (kind === "group") return { kind: "group" as const, rawId: raw };
+  return { kind: "dm" as const, rawId: raw };
 };

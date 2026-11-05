@@ -15,7 +15,7 @@ export type PersonalTransactionType = "INCOME" | "EXPENSE";
 export type SplitType = "EQUAL" | "EXACT" | "PERCENT";
 export type ExpenseSplitItem = { user_id: number; amount?: number; percentage?: number };
 export type ExpenseFormData = {
-  id?: number;
+  id?: string;
   title: string;
   amount: number;
   category: string;
@@ -23,7 +23,7 @@ export type ExpenseFormData = {
   transactionType?: PersonalTransactionType;
   paymentMethod?: string;
   group?: string;
-  groupId?: number;
+  groupId?: string;
   date: string;
   splitType?: SplitType;
   splitData?: ExpenseSplitItem[];
@@ -35,7 +35,7 @@ interface AddEditExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
   expense?: ExpenseFormData | null;
   groups?: GroupOption[];
-  defaultGroupId?: number;
+  defaultGroupId?: string;
   defaultTransactionType?: PersonalTransactionType;
   onSubmit?: (expense: ExpenseFormData) => void | Promise<void>;
 }
@@ -75,7 +75,7 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("FOOD");
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [groupId, setGroupId] = useState<number | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [splitType, setSplitType] = useState<SplitType>("EQUAL");
   const [participants, setParticipants] = useState<number[]>([]);

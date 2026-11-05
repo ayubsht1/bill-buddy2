@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet, apiPost, formatApiDate, getApiErrorMessage, initials, resolveProfilePictureUrl, type FriendRequest, type UserSummary, userDisplayName } from "@/lib/api/billbuddy";
 import { useAppPreferences } from "@/providers/preferences-provider";
 
-type Request = { id: number; person: UserSummary; createdAt: string };
+type Request = { id: string; person: UserSummary; createdAt: string };
 
 export default function FriendRequestsPage() {
   const { preferences } = useAppPreferences();
@@ -20,7 +20,7 @@ export default function FriendRequestsPage() {
   const [sentRequests, setSentRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
     setLoading(true);

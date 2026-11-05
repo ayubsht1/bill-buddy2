@@ -3,7 +3,7 @@ const WS_BASE_URL =
   process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
 export function createGroupChatSocket(
-  groupId: number,
+  groupId: string,
   accessToken: string,
 ): WebSocket {
   const url = new URL(`/ws/chat/${groupId}/`, WS_BASE_URL);

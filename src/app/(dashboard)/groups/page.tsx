@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet, formatApiDate, getApiErrorMessage, type Group as ApiGroup, type GroupBalances, type GroupExpense } from "@/lib/api/billbuddy";
 import { useAppPreferences } from "@/providers/preferences-provider";
@@ -96,7 +97,7 @@ const GroupRow = memo(function GroupRow({ group, timezone, language, formatCurre
   const amountOwed = Math.max(0, group.netBalance);
   return (
     <div className="flex flex-col gap-4 px-5 py-5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center">
-      <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="size-5" /></div>
+      <Avatar className="size-12 shrink-0 rounded-xl"><AvatarImage src={group.group_photo ?? undefined} alt={`${group.name} group picture`} /><AvatarFallback className="rounded-xl bg-primary/10 text-primary"><Users className="size-5" /></AvatarFallback></Avatar>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{group.name}</h3><Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">{group.user_role ?? "member"}</Badge></div>
         <p className="mt-1 truncate text-sm text-muted-foreground">{group.description || "No group description."}</p>
