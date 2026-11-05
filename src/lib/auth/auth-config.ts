@@ -118,14 +118,19 @@ export const authOptions: NextAuthConfig = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
           const response = await axios.post<DjangoLoginResponse>(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/login/`,
             { email: credentials.email, password: credentials.password },
-            { headers: { "Content-Type": "application/json" } },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "X-Session-User-Agent": request.headers.get("user-agent") || "",
+              },
+            },
           );
 
           if (!response.data.success) {

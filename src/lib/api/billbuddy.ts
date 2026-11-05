@@ -167,6 +167,19 @@ export interface UserPreferences {
   timezone: string;
 }
 
+export interface UserSessionRecord {
+  id: string;
+  device: string;
+  browser: string;
+  operating_system: string;
+  ip_address: string | null;
+  login_at: string;
+  last_activity: string;
+  logout_at: string | null;
+  status: "active" | "logged_out" | "revoked";
+  is_current: boolean;
+}
+
 export function resolveProfilePictureUrl(picture: string | null | undefined): string | undefined {
   if (!picture) return undefined;
   if (/^https?:\/\//i.test(picture)) return picture;

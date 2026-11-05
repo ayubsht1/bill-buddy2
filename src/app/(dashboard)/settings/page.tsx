@@ -5,14 +5,19 @@ import { signOut as clearAuthSession, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import {
   Bell,
+  Clock3,
   CircleUserRound,
   Globe,
   Lock,
   LogOut,
+  MapPin,
   Mail,
+  Monitor,
   Moon,
   Palette,
+  RotateCw,
   Shield,
+  ShieldCheck,
   Smartphone,
   Sun,
   Trash2,
@@ -31,7 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { apiGet, apiPatch, apiPost, apiRequest, getApiErrorMessage, type UserProfile } from "@/lib/api/billbuddy";
+import { apiGet, apiPatch, apiPost, apiRequest, getApiErrorMessage, type UserProfile, type UserSessionRecord } from "@/lib/api/billbuddy";
 import {
   getCurrencySymbol,
   getTimezoneOffsetLabel,
@@ -362,9 +367,58 @@ function NotificationSettings() {
 
 function SecuritySettings({ hasPassword }: { hasPassword: boolean }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [activeSessions, setActiveSessions] = useState<UserSessionRecord[]>([]);
+  const [sessionHistory, setSessionHistory] = useState<UserSessionRecord[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionAction, setSessionAction] = useState<{ type: "session"; session: UserSessionRecord } | { type: "others" } | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSessionsError(null);
+    try {
+      const [active, history] = await Promise.all([
+        apiGet<UserSessionRecord[]>("/sessions/"),
+        apiGet<UserSessionRecord[]>("/sessions/history/"),
+      ]);
+      setActiveSessions(active);
+      setSessionHistory(history);
+    } catch (error) {
+      setSessionsError(getApiErrorMessage(error));
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadSessions(); }, [loadSessions]);
+
+  const confirmRevoke = async () => {
+    if (!sessionAction) return;
+    setRevoking(true);
+    setSessionsError(null);
+    try {
+      if (sessionAction.type === "others") {
+        await apiPost("/sessions/revoke-others/");
+        toast.success("All other sessions have been signed out.");
+      } else {
+        await apiPost(`/sessions/${encodeURIComponent(sessionAction.session.id)}/revoke/`);
+        toast.success("Session revoked.");
+      }
+      setSessionAction(null);
+      await loadSessions();
+    } catch (error) {
+      const message = getApiErrorMessage(error);
+      setSessionsError(message);
+      toast.error(message);
+    } finally {
+      setRevoking(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <SettingsHeader title="Security" description="Manage the security options currently supported by BillBuddy." />
+      <SettingsHeader title="Security" description="Manage your password and the devices signed in to your account." />
       <Card>
         <CardHeader><CardTitle className="text-base">Password</CardTitle><CardDescription>{hasPassword ? "Change the password used to sign in." : "Create a password for your account."}</CardDescription></CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -377,13 +431,104 @@ function SecuritySettings({ hasPassword }: { hasPassword: boolean }) {
         <CardHeader><CardTitle className="text-base">Additional security</CardTitle><CardDescription>Features the backend does not currently provide.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           <SettingRow icon={Shield} title="Two-factor authentication" description="No two-factor configuration endpoint is available."><Badge variant="outline">Unavailable</Badge></SettingRow>
-          <Separator />
-          <SettingRow icon={Smartphone} title="Other active sessions" description="The backend does not expose session management."><Badge variant="outline">Unavailable</Badge></SettingRow>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><CardTitle className="text-base">Active sessions</CardTitle><CardDescription>Devices currently signed in to your BillBuddy account.</CardDescription></div>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => void loadSessions()} disabled={sessionsLoading}>
+            <RotateCw className={`size-4 ${sessionsLoading ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {sessionsError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{sessionsError}</div>}
+          {sessionsLoading ? (
+            <SkeletonCard />
+          ) : activeSessions.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No active sessions were found.</p>
+          ) : (
+            <div className="space-y-3">
+              {activeSessions.map((session) => <ActiveSessionCard key={session.id} session={session} onRevoke={() => setSessionAction({ type: "session", session })} />)}
+            </div>
+          )}
+          {activeSessions.length > 1 && <div className="border-t pt-4"><Button variant="destructive" size="sm" onClick={() => setSessionAction({ type: "others" })} disabled={sessionsLoading}>Sign out all other devices</Button></div>}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Session history</CardTitle><CardDescription>Recent devices that have signed out or been revoked.</CardDescription></CardHeader>
+        <CardContent>
+          {sessionsLoading ? <SkeletonCard /> : sessionHistory.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No previous sessions.</p>
+          ) : (
+            <div className="divide-y">
+              {sessionHistory.map((session) => (
+                <div key={session.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-start sm:justify-between">
+                  <SessionDeviceInfo session={session} />
+                  <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
+                    <Badge variant={session.status === "revoked" ? "destructive" : "outline"}>{session.status === "revoked" ? "Revoked" : "Logged out"}</Badge>
+                    <span className="text-xs text-muted-foreground">Ended {formatSessionDate(session.logout_at)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Dialog open={sessionAction !== null} onOpenChange={(open) => { if (!open && !revoking) setSessionAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{sessionAction?.type === "others" ? "Sign out other devices?" : "Revoke this session?"}</DialogTitle>
+            <DialogDescription>
+              {sessionAction?.type === "others"
+                ? "All other devices will be signed out immediately. This device will remain signed in."
+                : `The ${sessionAction?.type === "session" ? sessionAction.session.device.toLowerCase() : ""} will lose access immediately.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" disabled={revoking} onClick={() => setSessionAction(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={revoking} onClick={() => void confirmRevoke()}>{revoking ? "Signing out..." : "Confirm"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} hasPassword={hasPassword} />
     </div>
   );
+}
+
+function ActiveSessionCard({ session, onRevoke }: { session: UserSessionRecord; onRevoke: () => void }) {
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between">
+      <SessionDeviceInfo session={session} />
+      <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+        {session.is_current ? <Badge className="gap-1"><ShieldCheck className="size-3" /> This device</Badge> : <Badge variant="outline">Active</Badge>}
+        {!session.is_current && <Button variant="outline" size="sm" className="gap-2" onClick={onRevoke}><LogOut className="size-3.5" /> Revoke</Button>}
+      </div>
+    </div>
+  );
+}
+
+function SessionDeviceInfo({ session }: { session: UserSessionRecord }) {
+  const DeviceIcon = /mobile|tablet/i.test(session.device) ? Smartphone : Monitor;
+  return (
+    <div className="flex min-w-0 gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted"><DeviceIcon className="size-4 text-muted-foreground" /></div>
+      <div className="min-w-0 space-y-1">
+        <p className="break-words text-sm font-medium">{session.device} · {session.operating_system}</p>
+        <p className="break-words text-xs text-muted-foreground">{session.browser}</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1"><MapPin className="size-3" /> IP {session.ip_address ?? "Unavailable"}</span>
+          <span className="inline-flex items-center gap-1"><Clock3 className="size-3" /> Signed in {formatSessionDate(session.login_at)}</span>
+          <span className="inline-flex items-center gap-1"><Clock3 className="size-3" /> Last active {formatSessionDate(session.last_activity)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatSessionDate(value: string | null) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
 }
 
 function AccountSettings({ profile }: { profile: UserProfile | null }) {
