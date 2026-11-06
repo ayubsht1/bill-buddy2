@@ -12,6 +12,7 @@ import {
   MessageCircle,
   BarChart3,
   HandCoins,
+  Bell,
 } from "lucide-react"
 
 import { NavMain } from "@/components/layout/dashboard/nav-main"
@@ -74,6 +75,11 @@ const data = {
       title: "Settlements",
       url: "/settlements",
       icon: HandCoins,
+    },
+    {
+      title: "Notifications",
+      url: "/notifications",
+      icon: Bell,
     },
     {
       title: "Settings",

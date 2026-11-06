@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getApiErrorMessage, type Group } from "@/lib/api/billbuddy";
 import { getCurrencySymbol, useAppPreferences } from "@/providers/preferences-provider";
+import { parseDateTimeForTimezone } from "@/lib/datetime";
 
 export type ExpenseType = "Personal" | "Group";
 export type PersonalTransactionType = "INCOME" | "EXPENSE";
 export type SplitType = "EQUAL" | "EXACT" | "PERCENT";
+export type ExpenseReminderSchedule = "none" | "1-day" | "3-days" | "1-week" | "2-weeks" | "1-month" | "custom";
 export type ExpenseSplitItem = { user_id: number; amount?: number; percentage?: number };
 export type ExpenseFormData = {
   id?: string;
@@ -27,6 +29,8 @@ export type ExpenseFormData = {
   date: string;
   splitType?: SplitType;
   splitData?: ExpenseSplitItem[];
+  reminderSchedule?: ExpenseReminderSchedule;
+  reminderAt?: string;
 };
 type GroupOption = Pick<Group, "id" | "name" | "members">;
 
@@ -82,6 +86,8 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
   const [splitValues, setSplitValues] = useState<Record<number, string>>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reminderSchedule, setReminderSchedule] = useState<ExpenseReminderSchedule>("none");
+  const [customReminderAt, setCustomReminderAt] = useState("");
 
   const activeGroup = groups.find((group) => group.id === groupId);
   const activeMembers = activeGroup?.members ?? [];
@@ -107,6 +113,8 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
       const selected = expense.splitData?.map((part) => part.user_id) ?? [];
       setParticipants(selected);
       setSplitValues(Object.fromEntries((expense.splitData ?? []).map((part) => [part.user_id, String(part.amount ?? part.percentage ?? "")])));
+      setReminderSchedule(expense.reminderSchedule ?? "none");
+      setCustomReminderAt("");
     } else {
       resetForm(defaultTransactionType);
       if (defaultGroupId) {
@@ -134,6 +142,8 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
     setParticipants([]);
     setSplitValues({});
     setValidationError(null);
+    setReminderSchedule("none");
+    setCustomReminderAt("");
   };
 
   const handleSubmit = async () => {
@@ -145,6 +155,21 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
     if (expenseType === "Group" && participants.length === 0) return setValidationError("Select at least one participant.");
     if (splitType === "EXACT" && Math.abs(splitData.reduce((sum, item) => sum + (item.amount ?? 0), 0) - numericAmount) > 0.001) return setValidationError("Exact shares must add up to the total amount.");
     if (splitType === "PERCENT" && Math.abs(splitData.reduce((sum, item) => sum + (item.percentage ?? 0), 0) - 100) > 0.001) return setValidationError("Split percentages must total 100%.");
+    let reminderAt: string | undefined;
+    if (expenseType === "Group" && reminderSchedule === "custom") {
+      reminderAt = customReminderAt ? parseDateTimeForTimezone(customReminderAt, preferences.timezone) ?? undefined : undefined;
+      if (!reminderAt) return setValidationError("Choose a valid reminder date and time in your preferred time zone.");
+      if (new Date(reminderAt) <= new Date()) return setValidationError("Choose a future reminder time.");
+    }
+    if (expenseType === "Group" && reminderSchedule !== "none" && reminderSchedule !== "custom") {
+      const date = new Date();
+      if (reminderSchedule === "1-month") date.setMonth(date.getMonth() + 1);
+      else {
+        const days = reminderSchedule === "1-day" ? 1 : reminderSchedule === "3-days" ? 3 : reminderSchedule === "1-week" ? 7 : 14;
+        date.setDate(date.getDate() + days);
+      }
+      reminderAt = date.toISOString();
+    }
     setSaving(true);
     setValidationError(null);
     try {
@@ -161,6 +186,8 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
         date,
         splitType,
         splitData: expenseType === "Group" ? splitData : undefined,
+        reminderSchedule,
+        reminderAt,
       });
       onOpenChange(false);
     } catch (error) {
@@ -213,6 +240,23 @@ export function AddEditExpenseDialog({ open, onOpenChange, expense, groups = [],
                 return <div key={member.id} className="flex items-center gap-3"><input type="checkbox" checked={included} onChange={(event) => setParticipants((current) => event.target.checked ? [...current, userId] : current.filter((id) => id !== userId))} aria-label={`Include ${member.user.username}`} /><span className="min-w-0 flex-1 truncate text-sm">@{member.user.username}{member.role === "owner" ? " (owner)" : ""}</span>{included && splitType !== "EQUAL" && <Input aria-label={`${splitType === "EXACT" ? "Share amount" : "Share percentage"} for ${member.user.username}`} className="h-8 w-28" type="number" min="0" step="0.01" value={splitValues[userId] ?? ""} onChange={(event) => setSplitValues((values) => ({ ...values, [userId]: event.target.value }))} placeholder={splitType === "EXACT" ? currencySymbol : "%"} />}</div>;
               })}
               <p className="text-xs text-muted-foreground">{splitType === "EQUAL" ? "Equal amounts are rounded to cents by the server." : splitType === "EXACT" ? "Custom shares must equal the total amount." : "Custom percentages must total 100%."}</p>
+            </div>}
+            {activeGroup && <div className="space-y-2 rounded-lg border p-4">
+              <Label htmlFor="expense-reminder">Reminder</Label>
+              <select id="expense-reminder" value={reminderSchedule} onChange={(event) => setReminderSchedule(event.target.value as ExpenseReminderSchedule)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="none">No new reminder</option>
+                <option value="1-day">In 1 day</option>
+                <option value="3-days">In 3 days</option>
+                <option value="1-week">In 1 week</option>
+                <option value="2-weeks">In 2 weeks</option>
+                <option value="1-month">In 1 month</option>
+                <option value="custom">Choose date and time…</option>
+              </select>
+              {reminderSchedule === "custom" && <div className="space-y-1">
+                <Label htmlFor="expense-reminder-custom" className="text-xs text-muted-foreground">Time zone: {preferences.timezone}</Label>
+                <Input id="expense-reminder-custom" type="datetime-local" value={customReminderAt} onChange={(event) => setCustomReminderAt(event.target.value)} />
+              </div>}
+              <p className="text-xs text-muted-foreground">Manage or cancel existing reminders from Notifications.</p>
             </div>}
           </>}
           {validationError && <p role="alert" className="text-sm text-destructive">{validationError}</p>}

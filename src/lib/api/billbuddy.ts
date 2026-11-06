@@ -126,6 +126,44 @@ export interface GroupEvent {
   updated_at: string;
 }
 
+export interface AppNotification {
+  id: number;
+  category: "groups" | "expenses" | "chat" | "settlements" | "security" | "reminders";
+  title: string;
+  message: string;
+  url: string;
+  created_at: string;
+  read_at: string | null;
+  is_read: boolean;
+}
+
+export interface NotificationPage {
+  results: AppNotification[];
+  count: number;
+  unread_count: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export type NotificationChannelPreferences = Record<
+  AppNotification["category"],
+  { in_app: boolean; email: boolean }
+>;
+
+export interface ReminderRecord {
+  id: string;
+  group: string;
+  group_id?: string;
+  target_type: "expense" | "event" | "settlement";
+  expense: string | null;
+  event: string | null;
+  target_user: string | null;
+  scheduled_at: string;
+  status: "pending" | "processing" | "sent" | "cancelled";
+  created_at: string;
+  sent_at: string | null;
+}
+
 export interface Settlement {
   id: string;
   group: number;

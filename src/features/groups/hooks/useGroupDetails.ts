@@ -1,19 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
+import type { ExpenseFormData } from "@/components/expenses/add-edit-expense-dialog";
 import {
+  apiDelete,
+  apiGet,
+  apiPost,
   getApiErrorMessage,
   type Group,
+  type GroupBalances,
   type GroupExpense,
+  type GroupMessage,
+  type ReminderRecord,
 } from "@/lib/api/billbuddy";
 import { groupApi } from "../services/groupApi";
 
 export function useGroupDetails(groupId: string) {
-  const router = useRouter();
   const [details, setDetails] = useState<Group | null>(null);
-  const [balances, setBalances] = useState<any>(null);
+  const [balances, setBalances] = useState<GroupBalances | null>(null);
   const [expenses, setExpenses] = useState<GroupExpense[]>([]);
-  const [activity, setActivity] = useState<any[]>([]);
+  const [activity, setActivity] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
@@ -90,7 +95,7 @@ export function useGroupDetails(groupId: string) {
     }
   };
 
-  const saveExpense = async (form: any) => {
+  const saveExpense = async (form: ExpenseFormData) => {
     setSaving(true);
     try {
       const body = {
@@ -106,6 +111,25 @@ export function useGroupDetails(groupId: string) {
           : [...current, saved]
       );
       toast.success(form.id ? "Expense updated." : "Expense added.");
+      if (form.reminderSchedule && form.reminderSchedule !== "none" && form.reminderAt) {
+        try {
+          const reminders = await apiGet<ReminderRecord[]>("/notifications/reminders/");
+          const existing = reminders.filter((reminder) =>
+            reminder.status === "pending" &&
+            reminder.target_type === "expense" &&
+            reminder.expense === saved.id,
+          );
+          await Promise.all(existing.map((reminder) => apiDelete(`/notifications/reminders/${reminder.id}/`)));
+          await apiPost("/notifications/reminders/", {
+            group_id: groupId,
+            target_type: "expense",
+            expense_id: saved.id,
+            scheduled_at: form.reminderAt,
+          });
+        } catch (reminderError) {
+          toast.error(`Expense saved, but reminder could not be scheduled: ${getApiErrorMessage(reminderError)}`);
+        }
+      }
       await refreshBalances();
     } catch (e) {
       toast.error(getApiErrorMessage(e));

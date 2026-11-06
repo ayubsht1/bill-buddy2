@@ -36,7 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { apiGet, apiPatch, apiPost, apiRequest, getApiErrorMessage, type UserProfile, type UserSessionRecord } from "@/lib/api/billbuddy";
+import { apiGet, apiPatch, apiPost, apiRequest, getApiErrorMessage, type NotificationChannelPreferences, type UserProfile, type UserSessionRecord } from "@/lib/api/billbuddy";
 import {
   getCurrencySymbol,
   getTimezoneOffsetLabel,
@@ -325,40 +325,73 @@ function PreferencesSettings() {
   );
 }
 
-const notificationDefaults: Record<string, boolean> = { expenseAdded: true, settlementReceived: true, friendRequests: true, groupInvitations: true, newMessages: true, groupActivity: false, weeklySummary: true };
-const notificationLabels = [
-  { key: "expenseAdded", title: "Expense added", description: "Notify me when a new group expense is recorded." },
-  { key: "settlementReceived", title: "Settlement received", description: "Notify me when someone records a payment to me." },
-  { key: "friendRequests", title: "Friend requests", description: "Notify me about incoming friend requests." },
-  { key: "groupInvitations", title: "Group invitations", description: "Notify me when I am added to a group." },
-  { key: "newMessages", title: "New messages", description: "Notify me when a group message arrives." },
-  { key: "groupActivity", title: "Group activity", description: "Notify me about important changes in groups." },
-  { key: "weeklySummary", title: "Weekly summary", description: "Receive a weekly summary of activity." },
-];
-
 function NotificationSettings() {
-  const [preferences, setPreferences] = useState<Record<string, boolean>>(notificationDefaults);
-  useEffect(() => {
+  const [preferences, setPreferences] = useState<NotificationChannelPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const categories: Array<{ key: keyof NotificationChannelPreferences; title: string; description: string }> = [
+    { key: "groups", title: "Groups and invitations", description: "Member changes, group updates, and invitations." },
+    { key: "expenses", title: "Group expenses", description: "New, edited, and removed shared expenses." },
+    { key: "chat", title: "Messages and mentions", description: "Group chat messages and mentions." },
+    { key: "settlements", title: "Payments and settlements", description: "Important payment updates." },
+    { key: "reminders", title: "Reminders", description: "Scheduled expense, event, and settlement reminders." },
+    { key: "security", title: "Account security", description: "Important sign-in and password activity (always enabled)." },
+  ];
+
+  const loadPreferences = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const stored = localStorage.getItem("billbuddy-notifications");
-      if (stored) setPreferences({ ...notificationDefaults, ...JSON.parse(stored) as Record<string, boolean> });
-    } catch {
-      toast.error("Saved notification settings could not be read; using defaults.");
+      const response = await apiGet<{ categories: NotificationChannelPreferences }>("/notifications/preferences/");
+      setPreferences(response.categories);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setLoading(false);
     }
   }, []);
-  const update = (key: string, checked: boolean) => {
-    const next = { ...preferences, [key]: checked };
+  useEffect(() => { void loadPreferences(); }, [loadPreferences]);
+
+  const update = async (category: keyof NotificationChannelPreferences, channel: "in_app" | "email", checked: boolean) => {
+    if (!preferences || category === "security") return;
+    const previous = preferences;
+    const next = { ...preferences, [category]: { ...preferences[category], [channel]: checked } };
     setPreferences(next);
-    localStorage.setItem("billbuddy-notifications", JSON.stringify(next));
-    toast.success("Notification preference saved in this browser.");
+    setSavingKey(`${category}:${channel}`);
+    setError(null);
+    try {
+      const response = await apiPatch<{ categories: NotificationChannelPreferences }>("/notifications/preferences/", { categories: next });
+      setPreferences(response.categories);
+      toast.success("Notification preferences updated.");
+    } catch (requestError) {
+      setPreferences(previous);
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setSavingKey(null);
+    }
   };
   return (
     <div className="space-y-6">
-      <SettingsHeader title="Notifications" description="Notification delivery preferences are stored locally because the backend has no preference endpoint." />
+      <SettingsHeader title="Notifications" description="Choose which activity updates you receive in Bill Buddy and by email." />
       <Card>
-        <CardHeader><CardTitle className="text-base">Notification preferences</CardTitle><CardDescription>These switches do not change server-side or email delivery.</CardDescription></CardHeader>
-        <CardContent className="divide-y">
-          {notificationLabels.map((item) => <div key={item.key} className="flex items-center gap-4 py-4"><div className="min-w-0 flex-1"><p className="text-sm font-medium">{item.title}</p><p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.description}</p></div><Switch checked={preferences[item.key]} onCheckedChange={(checked) => update(item.key, checked)} aria-label={item.title} /></div>)}
+        <CardHeader><CardTitle className="text-base">Delivery preferences</CardTitle><CardDescription>Security notifications remain enabled to protect your account.</CardDescription></CardHeader>
+        <CardContent>
+          {loading ? <div className="space-y-4">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-14 animate-pulse rounded bg-muted/50" />)}</div> : error && !preferences ? (
+            <div className="space-y-3"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void loadPreferences()}>Retry</Button></div>
+          ) : preferences && <>
+            <div className="mb-2 hidden grid-cols-[minmax(0,1fr)_90px_90px] gap-3 px-1 text-center text-xs font-medium text-muted-foreground sm:grid"><span /><span>In-app</span><span>Email</span></div>
+            <div className="divide-y">
+              {categories.map((item) => <div key={item.key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_90px_90px]">
+                <div className="min-w-0"><p className="text-sm font-medium">{item.title}</p><p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.description}</p></div>
+                {(["in_app", "email"] as const).map((channel) => <div key={channel} className="flex flex-col items-center gap-1 sm:gap-0">
+                  <span className="text-[10px] text-muted-foreground sm:hidden">{channel === "in_app" ? "In-app" : "Email"}</span>
+                  <Switch checked={preferences[item.key][channel]} disabled={item.key === "security" || savingKey === `${item.key}:${channel}`} onCheckedChange={(checked) => void update(item.key, channel, checked)} aria-label={`${item.title} ${channel}`} />
+                </div>)}
+              </div>)}
+            </div>
+            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+          </>}
         </CardContent>
       </Card>
     </div>

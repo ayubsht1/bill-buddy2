@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/layout/dashboard/mode-toggle";
 import { NavUser } from "@/components/layout/dashboard/nav-user";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Toaster } from "react-hot-toast";
 
 interface DashboardLayoutProps {
@@ -28,9 +29,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DynamicBreadcrumbs />
             </div>
 
-            {/* Right section: Theme toggle and User Profile */}
+            {/* Right section: Theme toggle, notifications, and User Profile */}
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
               <ModeToggle />
+              <NotificationBell />
 
               {/* User Profile Component moved here */}
               <div className="ml-1 border-l pl-2 sm:pl-3">
