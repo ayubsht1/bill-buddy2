@@ -104,7 +104,7 @@ export function useGroupDetails(groupId: string) {
         split_type: form.splitType ?? "EQUAL",
         split_data: form.splitData ?? [],
       };
-      const saved = await groupApi.saveExpense(form.id, groupId, body);
+      const saved = await groupApi.saveExpense(form.id ?? null, groupId, body);
       setExpenses((current) => 
         form.id 
           ? current.map(e => e.id === saved.id ? saved : e)

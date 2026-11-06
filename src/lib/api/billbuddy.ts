@@ -86,7 +86,7 @@ export interface GroupBalances {
 }
 
 export interface GroupMessage {
-  id: number | null;
+  id: number | string | null;
   sender_username: string;
   sender_profile_picture: string | null;
   message: string;

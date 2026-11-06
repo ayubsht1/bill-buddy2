@@ -2,12 +2,13 @@ import { useRef, useState } from "react";
 import { Paperclip, Send, Smile, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { GroupMessage } from "@/lib/api/billbuddy";
 
 interface MessageInputProps {
   message: string;
   setMessage: (val: string) => void;
-  replyingTo: any | null;
-  setReplyingTo: (val: any) => void;
+  replyingTo: GroupMessage | null;
+  setReplyingTo: (val: GroupMessage | null) => void;
   attachment: File | null;
   setAttachment: (val: File | null) => void;
   emojiPickerOpen: boolean;

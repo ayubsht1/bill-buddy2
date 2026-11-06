@@ -25,6 +25,7 @@ import {
 import { adapterFor, groupAdapter } from "../services/adapters";
 import { fromGroup, parseConversationId, type Conversation } from "../types/types";
 import { sameMessages, sameExpenses } from "../utils/chat-utils";
+import type { ExpenseFormData } from "@/components/expenses/add-edit-expense-dialog";
 
 const LAST_READ_KEY = "billbuddy-group-chat-last-read";
 
@@ -54,7 +55,7 @@ export function useChat() {
   const [conversationError, setConversationError] = useState<string | null>(null);
 
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseFormData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GroupExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState(false);
 
@@ -418,9 +419,9 @@ useEffect(() => {
       })),
     });
     setExpenseDialogOpen(true);
-  }, [groups]);
+  }, []);
 
-  const saveExpense = async (form: any) => {
+  const saveExpense = async (form: ExpenseFormData) => {
     if (!selectedId) throw new Error("Choose a chat first.");
     const { kind, rawId } = parseConversationId(selectedId);
     if (kind !== "group") throw new Error("Expenses are only available in groups.");
@@ -431,7 +432,7 @@ useEffect(() => {
       split_type: form.splitType ?? "EQUAL",
       split_data: form.splitData ?? [],
     };
-    const saved = await messageApi.saveExpense(form.id, rawId, body);
+    const saved = await messageApi.saveExpense(form.id ?? null, rawId, body);
 
     setExpenses((current) => {
       const list = current[selectedId] ?? [];

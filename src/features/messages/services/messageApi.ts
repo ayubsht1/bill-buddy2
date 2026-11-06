@@ -7,6 +7,7 @@ import {
   type GroupExpense,
   type GroupMessage,
 } from "@/lib/api/billbuddy";
+import type { ExpenseSplitItem } from "@/components/expenses/add-edit-expense-dialog";
 
 export const messageApi = {
   async loadGroups(): Promise<Group[]> {
@@ -32,7 +33,7 @@ export const messageApi = {
       description: string;
       amount: number;
       split_type: string;
-      split_data: any[];
+      split_data: ExpenseSplitItem[];
     }
   ): Promise<GroupExpense> {
     if (expenseId) {

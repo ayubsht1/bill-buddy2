@@ -11,6 +11,7 @@ import { UseCases } from "@/features/landing/components/UseCases";
 import { CTA } from "@/features/landing/components/CTA";
 import { ContactSection } from "@/features/landing/components/ContactSection";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
 export default function LandingPage() {
   const { status } = useSession();
@@ -44,9 +45,9 @@ export default function LandingPage() {
       <footer className="border-t border-border/60 bg-background px-6 py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <a href="/" className="text-sm font-semibold text-foreground">
+            <Link href="/" className="text-sm font-semibold text-foreground">
               Bill <span className="text-primary">Buddy</span>
-            </a>
+            </Link>
             <p className="mt-1 text-xs text-muted-foreground">
               Personal expenses. Shared money. Smarter insights.
             </p>

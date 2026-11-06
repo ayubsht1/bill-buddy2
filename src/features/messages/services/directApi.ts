@@ -21,7 +21,9 @@ export type PersonalMessage = {
   timestamp: string;
   is_read?: boolean;
   is_deleted?: boolean;
-  reply_to?: any;
+  reply_to?: GroupMessage["reply_to"];
+  reply_to_id?: number | null;
+  reply_to_text?: string | null;
   attachment_url?: string | null;
   attachment_name?: string;
   attachment_type?: string | null;
@@ -57,13 +59,19 @@ export const picOf = (m: PersonalMessage, side: "sender" | "receiver") => {
 // Make a personal message look like a GroupMessage so ChatTimeline works unchanged.
 export function toChatMessage(m: PersonalMessage): GroupMessage {
   return {
-    ...(m as any),
-    sender_username: nameOf(m, "sender"),
+    id: m.id,
+    sender_username: nameOf(m, "sender") ?? "Unknown user",
     sender_profile_picture: picOf(m, "sender"),
     message: m.is_deleted ? "This message was deleted" : m.message,
+    timestamp: m.timestamp,
     attachment_url: m.is_deleted ? null : m.attachment_url,
+    attachment_name: m.attachment_name,
+    attachment_type: m.is_deleted ? null : m.attachment_type,
     is_system: false,
+    is_forwarded: false,
     is_pinned: false,
+    is_deleted: m.is_deleted ?? false,
+    reply_to: m.reply_to ?? null,
   };
 }
 

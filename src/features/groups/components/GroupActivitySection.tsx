@@ -1,9 +1,10 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { GroupMessage } from "@/lib/api/billbuddy";
 
 interface GroupActivitySectionProps {
-  activity: any[];
+  activity: GroupMessage[];
   activityError: string | null;
 }
 

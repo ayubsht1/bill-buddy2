@@ -15,10 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RefreshCw, UserPlus } from "lucide-react";
-import { userDisplayName } from "@/lib/api/billbuddy";
+import { userDisplayName, type GroupMember } from "@/lib/api/billbuddy";
 
 interface GroupMembersSectionProps {
-  members: any[];
+  members: GroupMember[];
   currentUserId: number;
   canManage: boolean;
   isOwner: boolean;

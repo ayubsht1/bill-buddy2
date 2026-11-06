@@ -4,8 +4,11 @@ import {
   apiPatch,
   apiPost,
   type Group,
+  type GroupBalances,
   type GroupExpense,
+  type GroupMessage,
 } from "@/lib/api/billbuddy";
+import type { ExpenseSplitItem } from "@/components/expenses/add-edit-expense-dialog";
 
 export const groupApi = {
   async getGroups(): Promise<Group[]> {
@@ -35,7 +38,7 @@ export const groupApi = {
       description: string;
       amount: number;
       split_type: string;
-      split_data: any[];
+      split_data: ExpenseSplitItem[];
     }
   ): Promise<GroupExpense> {
     if (expenseId) {
@@ -48,16 +51,16 @@ export const groupApi = {
     return apiDelete(`/expenses/${expenseId}/`);
   },
 
-  async getGroupBalances(groupId: string): Promise<any> {
-    return apiGet(`/groups/${groupId}/balances/`);
+  async getGroupBalances(groupId: string): Promise<GroupBalances> {
+    return apiGet<GroupBalances>(`/groups/${groupId}/balances/`);
   },
 
   async getGroupExpenses(groupId: string): Promise<GroupExpense[]> {
     return apiGet<GroupExpense[]>(`/expenses/group/${groupId}/`);
   },
 
-  async getGroupActivity(groupId: string): Promise<any[]> {
-    return apiGet<any[]>(`/groups/${groupId}/chat/`);
+  async getGroupActivity(groupId: string): Promise<GroupMessage[]> {
+    return apiGet<GroupMessage[]>(`/groups/${groupId}/chat/`);
   },
 
   async updateGroup(groupId: string, data: FormData | { name: string; description: string }): Promise<Group> {

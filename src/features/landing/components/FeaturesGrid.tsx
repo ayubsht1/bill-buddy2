@@ -2,14 +2,6 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { FEATURES } from "@/lib/landing";
 
-interface FeatureItemProps {
-  title: string;
-  Icon: any;
-  bg: string;
-  color: string;
-  description: string;
-}
-
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
   visible: {

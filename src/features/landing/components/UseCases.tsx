@@ -1,11 +1,5 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-
-interface UseCasesProps {
-  isAuthenticated: boolean;
-}
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
@@ -47,7 +41,7 @@ export const UseCases = () => {
               </h2>
             </div>
             <p className="max-w-sm text-sm leading-6 text-muted-foreground">
-              Whether you're tracking your own spending, sharing expenses, or talking with the people
+              Whether you&apos;re tracking your own spending, sharing expenses, or talking with the people
               involved, Bill Buddy keeps everything connected.
             </p>
           </motion.div>

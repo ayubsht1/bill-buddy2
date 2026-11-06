@@ -1,13 +1,13 @@
 "use client";
 
-import { Users, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SummaryCardProps {
   title: string;
   value: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
 }
 
 export function SummaryCard({ title, value, description, icon: Icon }: SummaryCardProps) {

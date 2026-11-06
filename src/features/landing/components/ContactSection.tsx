@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -22,7 +21,7 @@ export const ContactSection = ({ onSubmit }: ContactFormProps) => {
               Have questions about <span className="block text-muted-foreground">Bill Buddy?</span>
             </h2>
             <p className="mt-5 max-w-md text-sm leading-7 text-muted-foreground md:text-base">
-              Have a question, suggestion, or need help with Bill Buddy? Send us a message and we'll get back to you.
+              Have a question, suggestion, or need help with Bill Buddy? Send us a message and we&apos;ll get back to you.
             </p>
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-3">
@@ -51,7 +50,7 @@ export const ContactSection = ({ onSubmit }: ContactFormProps) => {
               <div className="mb-7">
                 <h3 className="text-lg font-semibold tracking-tight">Send us a message</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Fill out the form below and we'll get back to you.
+                  Fill out the form below and we&apos;ll get back to you.
                 </p>
               </div>
 
@@ -93,7 +92,7 @@ export const ContactSection = ({ onSubmit }: ContactFormProps) => {
                 </div>
                 <div className="flex flex-col gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <p className="max-w-sm text-xs leading-5 text-muted-foreground">
-                    We'll only use your information to respond to your message.
+                    We&apos;ll only use your information to respond to your message.
                   </p>
                   <Button
                     type="submit"
